@@ -57,7 +57,6 @@ There must be k = 7 hashes performed (7 indexes of the bloom filter per member)
 
 #define BITS_PER_BYTE 8 // Number of bits in bitArray
 
-
 //The array of bits
 uint8_t bitArray[ARRAY_SIZE];
 const uint8_t sramPUF[4][16] = {
@@ -85,7 +84,7 @@ void print2EEPROM();
 
 void setup() {
   Serial.begin(115200);
-  
+  Serial.println("Starting... Bloom Filter ...");
   for (int i = 0; i < ARRAY_SIZE; i++) {
     bitArray[i] = 0;
   }

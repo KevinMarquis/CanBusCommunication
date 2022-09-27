@@ -110,7 +110,7 @@ bool isFishy();
 void setup() {
   Serial.begin(115200);
   pinMode(LED,OUTPUT);
-  
+  Serial.println("Starting Receiver Mode...");
   
   // Delay until data can be read.
   while (CAN_OK != CAN.begin(CAN_500KBPS)) {             // init can bus : baudrate = 500k
@@ -123,7 +123,7 @@ void setup() {
   uint8_t response[MSG_SIZE];      //One quarter of a message sent
   uint8_t privateKey[KEY_SIZE];
 
-  
+  Serial.println("Starting Private Key Generation...");
   // Bob generates his private key
   for (int i = 0; i < KEY_SIZE; i++) {
     privateKey[i] = keyGen(i); //privateKey = 0 -> keyGen(i) = 0

@@ -59,7 +59,7 @@ void printSRAM() {
 
 void setup() {
   Serial.begin(115200);
-
+  Serial.println("STARTING...");
   Serial.println("\n\n");
 
   printBaseAddress();
@@ -68,7 +68,7 @@ void setup() {
 
   Serial.println("\n");
   //! Programmer must input the letter associated with their Uno device
-  fillStableBytes('B');
+  fillStableBytes('A');
   printStableBytes();
 }
 
