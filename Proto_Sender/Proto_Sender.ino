@@ -63,7 +63,8 @@ const unsigned int generator = 16807;
 #define ledON      true
 
 // Node IDs. The first byte of each node's SRAM PUF reading
-uint8_t nodeID[4] = {0xD3, 0xFA, 0xF3, 0x74};
+//uint8_t nodeID[4] = {0xD3, 0xFA, 0xF3, 0x74};  <- This is old
+uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
 
 
@@ -159,7 +160,7 @@ void setup() {
   msgSent[0] = 'G';
   sendMsg(msgSent, MSG_SIZE, thisID);
 
-
+    Serial.println("Starting KeyGen");
 // SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
   // Alice (sender) sends a message to Bob (receiver)
   for (int i = 0; i < MSGS_PER_KEY; i++) {
@@ -173,7 +174,7 @@ void setup() {
     delay(200);
     sendMsg(msgSent, MSG_SIZE, thisID);
   }
-
+    Serial.println("Starting Key Receipt");
 // RECEIVES RESPONSE |--------------------------------------------------------------------------------------------------------------------
   // Alice (sender) receives responses from every Bob (receivers)
   for (int i = 0; i < (NUM_NODES * MSG_SIZE); i++) {
@@ -390,8 +391,10 @@ void receiveMsg(uint8_t* msg, uint8_t msgLength) {
 }
 
 void verifyThisNode() {
+    Serial.println("Starting Node Verification...");
   uint8_t message;
   for (int i = 0; i < NUM_NODES; i++) {
+      Serial.println("Starting Message Receipt");
     receiveMsg(message, 1);
   }
   uint8_t thisPuf[16];
@@ -420,6 +423,7 @@ void printMsg(uint8_t* msg) {
 }
 
 void recordMsg(uint8_t* msg) {
+    Serial.println("Starting recordMSG");
   unsigned int numID = findNode(responderID);
 
   for (int j = 0; j < MSG_SIZE; j++) {
