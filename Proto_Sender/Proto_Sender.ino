@@ -31,6 +31,8 @@
 
 #include <EEPROM.h>
 
+#include <Node.h>
+
 /* NODE WIRING:
  *  To connect a node to an MCP2515, use this tutorial
  *  https://www.electronicshub.org/arduino-mcp2515-can-bus-tutorial/
@@ -122,7 +124,11 @@ void setup() {
   uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
   uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
   uint8_t response[CAN_MAX];     // Needs to be bigger
-  
+
+  //Create Sender Node Object
+  Node Sender  // Creating the node object initializes it with proper Friend Node IDs (Currently Hardcoded)
+
+
   for (int i = 0; i < NUM_NODES; i++) {
     msgCounter[i] = 0;
   }
@@ -144,6 +150,8 @@ void setup() {
   response[0] = 's';
   
   Serial.println();
+
+  //!This could be a new function for Node class - resync
   Serial.println("WAITING FOR RECEIVERS...");
   // Wait until every receiving node is ready
   for (int i = 0; i < NUM_NODES; i++) {
@@ -161,6 +169,7 @@ void setup() {
 
 
 // SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
+  //!We can use speak here
   // Alice (sender) sends a message to Bob (receiver)
   for (int i = 0; i < MSGS_PER_KEY; i++) {
     
@@ -176,6 +185,7 @@ void setup() {
 
 // RECEIVES RESPONSE |--------------------------------------------------------------------------------------------------------------------
   // Alice (sender) receives responses from every Bob (receivers)
+  //! We can use hear here
   for (int i = 0; i < (NUM_NODES * MSG_SIZE); i++) {
     Serial.print("Msg #");
     Serial.println(i);
@@ -195,6 +205,7 @@ void setup() {
   Serial.println();
   Serial.println();
   Serial.println("---------- | BLOOM FILTER |----------");
+  //!For testing purposes, we can create another node object and hardcode its PUF to be something it isn't.
 
   //A message with a false ID is purposefully sent to the node to see if the filter is working.
   sendMsg(msgSent, MSG_SIZE, 'X');
