@@ -69,7 +69,7 @@ For this example, consider the receiver "Bob".
 const uint8_t prime = 251;
 const unsigned int generator = 16807; 
 
-uint8_t nodeID[4] = {0xD3, 0xFA, 0xF3, 0x74};
+uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
 uint8_t trueSenderID;
 uint8_t senderID = 'X';
