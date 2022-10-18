@@ -160,7 +160,7 @@ void setup() {
   msgSent[0] = 'G';
   sendMsg(msgSent, MSG_SIZE, thisID);
 
-    Serial.println("Starting KeyGen");
+  Serial.println("Starting KeyGen");
 // SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
   // Alice (sender) sends a message to Bob (receiver)
   for (int i = 0; i < MSGS_PER_KEY; i++) {
@@ -193,10 +193,35 @@ void setup() {
   }
 
   printKeys();
-  Serial.println();
-  Serial.println();
-  Serial.println("---------- | BLOOM FILTER |----------");
+  Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+  //Receivers always finish their work before the sender.  So, sender will send a resync request to receivers when he is ready.
+  response[0] = 'Y';
+  Serial.println("Sending OK to resync");
+  // Declare that this node is ready to resync
+  //for (ID in )
+  sendMsg(response, 1, thisID);
+  response[0] = 's';
 
+  //Resync before Bloom Filter test.  This may solve the issue regarding a desync that causes Bloom Filter failures.
+  Serial.println();
+  Serial.println("RESYNCHRONIZING NODES");
+  Serial.println("WAITING FOR RECEIVERS...");
+  // Wait until every receiving node is ready
+  for (int i = 0; i < NUM_NODES; i++) {
+      while (response[0] != 'Y') {
+          receiveMsg(response, 1);
+      }
+      response[0] = 's';
+      Serial.print("Node #");
+      Serial.print(i+1);
+      Serial.println(" is Ready!");
+
+  }
+
+  msgSent[0] = 'G';
+  sendMsg(msgSent, MSG_SIZE, thisID);
+
+  Serial.println("\n\n---------- | BLOOM FILTER |----------\n");
   //A message with a false ID is purposefully sent to the node to see if the filter is working.
   sendMsg(msgSent, MSG_SIZE, 'X');
   verifyThisNode();

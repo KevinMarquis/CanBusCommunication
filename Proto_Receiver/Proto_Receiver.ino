@@ -174,8 +174,31 @@ void setup() {
     Serial.print(" ");
     Serial.print(DIFFIE_KEY[c]);
   }
+    Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+    Serial.println();
+    Serial.println("Awaiting Resync Request from Sender...");
+    while (response[0] != 'Y') {
+        receiveMsg(response, 1);
+    }
+    response[0] = 's';
+    Serial.println("RESYNC REQUEST RECEIVED!");
+
+    //Take extra step to resync with sender.  This might solve desync issues causing Bloom Filter failures.
+    Serial.println();
+    Serial.println("RESYNCHRONIZING WITH SENDER");
+    response[0] = 'Y';
+    Serial.println("Sending OK to receive");
+    // Declare that this node is ready to receive messages
+    sendMsg(response);
+    Serial.println("OK Sent!");
+    while (msgReceived[0] != 'G') {
+        receiveMsg(msgReceived, 1);
+    }
+
+    Serial.println("Ready to Go!");
 
   Serial.println("\n\n---------- | BLOOM FILTER |----------\n");
+
 
   //A message with a false ID is purposefully sent to the node to see if the filter is working.
   receiveMsg_BLOOM(msgReceived, MSG_SIZE);
@@ -318,16 +341,24 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
 
 // Bloom Filter Functions |---------------------------------------------------------------------------------------------------------------
 bool isValid(uint8_t* puf) {
+    Serial.println("Starting isValid:");
   // After the unknown node sends its SRAM PUF, make a hash from the PUF.
   uint16_t index[7];
   getIndexes(index, puf);
+  Serial.println("SRAM PUF hashed.");
 
+  Serial.println("Running through index, check for 1");
   //For each index, check if the index is a 1.
   for (int i = 0; i < 7; i++) {
     uint8_t byteNum = index[i] / 8;      // Index of the byte to be read
+    Serial.print("Value of Byte: ");
+    Serial.println(byteNum);
+
     uint8_t bitNum = index[i] % 8;       // Index of the bit to be read from within the byte
-    
-    //If the index is not a 1, then this node isn't valid.
+    Serial.print("Value of Bit: ");
+    Serial.println(bitNum);
+
+      //If the index is not a 1, then this node isn't valid.
     if (!bitRead(EEPROM[byteNum+16], bitNum)) {
       return false;
     }
@@ -434,12 +465,25 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
 }
 
 bool isFishy() {
+    Serial.println("Running isFishy()...");
   for (int i = 0; i < 4; i++) {
+      //DEBUG CODE:
+      if (i==0){
+          Serial.println("Checking against Node A");      }
+      else if (i==1){
+          Serial.println("Checking against Node B");      }
+      else if (i==2){
+          Serial.println("Checking against Node C");      }
+      else if (i==3){
+          Serial.println("Checking against Node D");
+      }
     if (senderID != nodeID[i] && senderID != 0) { //ALL_RECEIVE = 0 in sender program
-      return true;
+        Serial.println("isFishy determined TRUE");
+        return true;
     }
   }
-  return false;
+    Serial.println("isFishy determined FALSE");
+    return false;
 }
 
 void printMsg(uint8_t* msg) {
