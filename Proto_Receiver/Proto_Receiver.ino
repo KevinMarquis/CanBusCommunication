@@ -60,14 +60,14 @@ For this example, consider the receiver "Bob".
 // Message & Key Sizes
 #define MSG_SIZE     4
 #define MSGS_PER_KEY 4
-#define KEY_SIZE     16 //MSG_SIZE * MSGS_PER_KEY 
+#define KEY_SIZE     16 //MSG_SIZE * MSGS_PER_KEY
 
 #define CAN_MAX 64
 
 //Diffie-Hellman Variables
 //const uint8_t prime = 2147483647;
 const uint8_t prime = 251;
-const unsigned int generator = 16807; 
+const unsigned int generator = 16807;
 
 uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
@@ -90,16 +90,16 @@ uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simp
 
 
 //FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
-// KEY GENERATION 
-uint8_t keyGen(int i);                            // Generates 1 byte, "a", of the 16-byte key. 
+// KEY GENERATION
+uint8_t keyGen(int i);                            // Generates 1 byte, "a", of the 16-byte key.
 uint8_t mulMod(uint8_t a, uint8_t b, uint8_t m);  // (a*b) mod m
 uint8_t powMod(uint8_t b, uint8_t e, uint8_t m);  // (b^e) mod m
 
 // Bloom Filter Functions
-bool isValid(uint8_t* puf);     
+bool isValid(uint8_t* puf);
 void getIndexes(uint16_t* indexes, uint8_t* puf);
 
-// COMMUNICATION FUNCTIONS 
+// COMMUNICATION FUNCTIONS
 void sendMsg(uint8_t* msg);
 void receiveMsg(uint8_t* msg, uint8_t msgLength);
 void printMsg(uint8_t* msg);
@@ -111,7 +111,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(LED,OUTPUT);
   Serial.println("Starting Receiver Mode...");
-  
+
   // Delay until data can be read.
   while (CAN_OK != CAN.begin(CAN_500KBPS)) {             // init can bus : baudrate = 500k
     Serial.println("CAN BUS Shield init fail");
@@ -131,7 +131,7 @@ void setup() {
   }
   response[0] = 'Y';
   Serial.println("Sending OK to receive");
-  // Declare that this node is ready to receive messages 
+  // Declare that this node is ready to receive messages
   sendMsg(response);
   Serial.println("OK Sent!");
   while (msgReceived[0] != 'G') {
@@ -141,12 +141,12 @@ void setup() {
 
   Serial.println("Ready to Go!");
 
-  
+
 // RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
   // Bob (receiver) gets a message from Alice (sender)
   for (int i = 0; i < MSGS_PER_KEY; i++) {
-    receiveMsg(msgReceived, MSG_SIZE); 
-    
+    receiveMsg(msgReceived, MSG_SIZE);
+
     //Bob (receiver) does the second layer of encryption on the received message, to get the shared key
     for ( int x = 0; x < MSG_SIZE; x++) {
       msgReceived[x] = powMod(msgReceived[x], privateKey[(i*MSG_SIZE) + x], prime);
@@ -205,6 +205,65 @@ void setup() {
 
   receiveMsg_BLOOM(msgReceived, MSG_SIZE);
   Serial.println("\n\n---------- | HASHING |----------\n");
+  int i = 0;  //Define iterator for hashing tests
+  while (i <= 10){
+      unsigned char arr[ARR_SIZE] = "56789";
+      unsigned char arr1[ARR_SIZE] = "00000";
+
+      uint8_t buf[BUF_SIZE];
+
+      byte rHash[HASH_SIZE + 16]; //Received Hash
+      uint8_t hash[HASH_SIZE];
+
+
+      while (!spritz_compare(arr, arr1, ARR_SIZE)) {
+          receiveMsg(arr1, ARR_SIZE);
+      }
+      if (loopCount == 9999) {
+          startTime = millis();
+          Serial.println("Timer Started");
+      }
+
+      senderID = 'X';
+      // The Message
+      while (senderID != thisID) {
+          receiveMsg(buf, 8);
+      }
+      receiveMsg(&buf[8], 8);
+      aes128_dec_single(DIFFIE_KEY, buf);
+
+      senderID = 'X';
+      // The Hash of the Message
+      while (senderID != thisID) {
+          receiveMsg(rHash, 8);
+      }
+      receiveMsg(&rHash[8], 8);
+      receiveMsg(&rHash[16], 4);
+
+
+      spritz_mac(hash, HASH_SIZE, buf, BUF_SIZE, DIFFIE_KEY, KEY_SIZE);
+
+      if (!spritz_compare(hash, rHash, HASH_SIZE)) {
+          Serial.print("Failed - ");
+          Serial.println(((stopTime - startTime)/10000.0) - 1200);
+      }
+      else {
+          Serial.print("\nSuccess!! The correct message is received");
+      }
+
+      Serial.print("\nCount: ");
+      Serial.println(loopCount);
+      if (loopCount == 0) {
+          stopTime = millis();
+          Serial.print("Time in mili seconds : ");
+          Serial.println(((stopTime - startTime)/10000.0) - 1200);
+          Serial.print("Time in seconds : ");
+          Serial.println((((stopTime - startTime)/10000.0) - 1200)/1000.0);
+          loopCount = 9999;
+      }
+      loopCount--;
+      i += 1;
+  }
 }
 
 #define BUF_SIZE 16
@@ -215,61 +274,23 @@ int startTime;
 int stopTime;
 
 void loop() {
-  unsigned char arr[ARR_SIZE] = "56789";
-  unsigned char arr1[ARR_SIZE] = "00000";
-
-  uint8_t buf[BUF_SIZE];
-
-  byte rHash[HASH_SIZE + 16]; //Received Hash
-  uint8_t hash[HASH_SIZE];
 
 
-  while (!spritz_compare(arr, arr1, ARR_SIZE)) {
-    receiveMsg(arr1, ARR_SIZE);
-  }
-  if (loopCount == 9999) {
-    startTime = millis();
-    Serial.println("Timer Started");
-  }
-  
-  senderID = 'X';
-  // The Message
-  while (senderID != thisID) {
-    receiveMsg(buf, 8);
-  }
-  receiveMsg(&buf[8], 8);
-  aes128_dec_single(DIFFIE_KEY, buf);
+  CAN.recvMsgBuf(&len,buf);
+  switch(state) {
+      case 1:
+          // check buf and do something based on data in the message and the current state
+          state = x;  change state to another state if necessary
+      case 2:
+          // check buf and do something based on data in the message and the current state
+          state = x;  change state to another state if necessary
 
-  senderID = 'X';
-  // The Hash of the Message
-  while (senderID != thisID) {
-    receiveMsg(rHash, 8);
-  }
-  receiveMsg(&rHash[8], 8);
-  receiveMsg(&rHash[16], 4);
+      case 3:
+          // check buf and do something based on data in the message and the current state
+          state = x;  change state to another state if necessary
+        }
 
 
-  spritz_mac(hash, HASH_SIZE, buf, BUF_SIZE, DIFFIE_KEY, KEY_SIZE);
-
-  if (!spritz_compare(hash, rHash, HASH_SIZE)) {
-    Serial.print("Failed - ");
-    Serial.println(((stopTime - startTime)/10000.0) - 1200);
-  }
-  else {
-    Serial.print("\nSuccess!! The correct message is received");
-  }
-
-  Serial.print("\nCount: ");
-  Serial.println(loopCount);
-  if (loopCount == 0) {
-    stopTime = millis();
-    Serial.print("Time in mili seconds : ");
-    Serial.println(((stopTime - startTime)/10000.0) - 1200);
-    Serial.print("Time in seconds : ");
-    Serial.println((((stopTime - startTime)/10000.0) - 1200)/1000.0);
-    loopCount = 9999;
-  }
-  loopCount--;
 }
 
 //KEY GENERATION FUNCTIONS |--------------------------------------------------------------------------------------------------------------
@@ -304,7 +325,7 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
   uint8_t pow;        // pow = (b ^ (2 ^ i)) % m
   uint8_t e_i = e;    // Temporary Version of e
   uint8_t i;          // current bit position being processed of e. Only used for debugging
-  
+
   // 1.) Check the base cases, to save time.
   if ( b == 0 || m == 0 ) {
     return 0;
@@ -393,13 +414,13 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
 
     indexes[i] = filterA & hash[i+x];
     indexes[i] = indexes[i] << 8;
-    
+
     temp = filterB & hash[i+x+1];
     indexes[i] = indexes[i] | temp;
-    
+
     indexes[i] = indexes[i] >> (8 - ((i*2)%8 + 2));
     //If a hash byte is all used up by the index, skip that byte for the next index.
-    if (filterB == 255) { 
+    if (filterB == 255) {
       x++;
     }
   }
@@ -414,7 +435,7 @@ void sendMsg(uint8_t* msg) {
 uint8_t temp[CAN_MAX];
 void receiveMsg(uint8_t* msg, uint8_t msgLength) {
   while(CAN_MSGAVAIL != CAN.checkReceive());
-  
+
   byte len = MSG_SIZE;
   CAN.readMsgBuf(&len, temp);
   senderID = CAN.getCanId();
@@ -427,7 +448,7 @@ void receiveMsg(uint8_t* msg, uint8_t msgLength) {
 //This is an experimental function, to test the bloom filter.
 void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
   while(CAN_MSGAVAIL != CAN.checkReceive());
-  
+
   byte len = MSG_SIZE;
   CAN.readMsgBuf(&len, temp);
   senderID = CAN.getCanId();
@@ -451,7 +472,7 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
     uint8_t no[4] = {'N', 'N', 'N', 'N'};
     sendMsg(no);
   }
-  
+
   if (senderIsValid) {
     for (int i = 0; i < msgLength; i++) {
       msg[i] = temp[i];
@@ -461,7 +482,7 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
   else {
     Serial.println("CORRUPT NODE!");
   }
-  
+
 }
 
 bool isFishy() {

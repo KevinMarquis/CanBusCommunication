@@ -231,41 +231,46 @@ void setup() {
   Serial.println();
   Serial.println();
   Serial.println("---------- | HASHING |----------");
+  int i = 0;
+  while (i < 10){
+      unsigned long time = millis();
+      Serial.print("Time: ");
+      Serial.println(time/1000);
+      Serial.println("\n");
+
+      unsigned char arr[] = "56789";
+      sendMsg(arr,       5, thisID);
+
+      for (int i = 0; i < NUM_NODES; i++) {
+          char stmp[16] = "1234567890123456";
+          spritz_mac(hash[i], HASH_SIZE, stmp, sizeof(stmp), DIFFIE_KEY[i], KEY_SIZE);
+          aes128_enc_single(DIFFIE_KEY[i], stmp);
+          sendMsg(stmp,      8, nodeID[i]);
+          sendMsg(&stmp[8],  8, nodeID[i]);
+          delay(200);
+      }
+
+      Serial.println();
+
+
+
+      for (int i = 0; i < NUM_NODES; i++) {
+          sendMsg(hash[i],     8, nodeID[i]);
+          sendMsg(&hash[i][8],  8, nodeID[i]);
+          sendMsg(&hash[i][16], 4, nodeID[i]);
+          delay(500);
+          i += 1
+      }
+  }
 }
 
 
 
 
 void loop() {
-  unsigned long time = millis();
-  Serial.print("Time: ");
-  Serial.println(time/1000);
-  Serial.println("\n");
 
-  unsigned char arr[] = "56789";
-  sendMsg(arr,       5, thisID);
 
-  for (int i = 0; i < NUM_NODES; i++) {
-    char stmp[16] = "1234567890123456";
-    spritz_mac(hash[i], HASH_SIZE, stmp, sizeof(stmp), DIFFIE_KEY[i], KEY_SIZE);
-    aes128_enc_single(DIFFIE_KEY[i], stmp);
-    sendMsg(stmp,      8, nodeID[i]);
-    sendMsg(&stmp[8],  8, nodeID[i]);
-    delay(200);
-  }
 
-  Serial.println();
-  
-  
-  
-  for (int i = 0; i < NUM_NODES; i++) {
-    sendMsg(hash[i],     8, nodeID[i]);
-    sendMsg(&hash[i][8],  8, nodeID[i]);
-    sendMsg(&hash[i][16], 4, nodeID[i]);
-    delay(500);
-  }
-  
-  
 }
 
 //KEY GENERATION FUNCTIONS |--------------------------------------------------------------------------------------------------------------
