@@ -81,6 +81,12 @@ uint8_t senderID = 'X';
 
 // Hashing Variables
 #define HASH_SIZE 20
+#define BUF_SIZE 16
+#define ARR_SIZE 5
+
+int loopCount = 9999;
+int startTime;
+int stopTime;
 
 
 
@@ -103,6 +109,9 @@ void getIndexes(uint16_t* indexes, uint8_t* puf);
 void sendMsg(uint8_t* msg);
 void receiveMsg(uint8_t* msg, uint8_t msgLength);
 void printMsg(uint8_t* msg);
+uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
+uint8_t response[MSG_SIZE];      //One quarter of a message sent
+uint8_t privateKey[KEY_SIZE];
 
 bool isFishy();
 
@@ -119,9 +128,9 @@ void setup() {
     delay(100);
   }
 
-  uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
-  uint8_t response[MSG_SIZE];      //One quarter of a message sent
-  uint8_t privateKey[KEY_SIZE];
+  //uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
+  //uint8_t response[MSG_SIZE];      //One quarter of a message sent
+  //uint8_t privateKey[KEY_SIZE];
 
   Serial.println("Starting Private Key Generation...");
   // Bob generates his private key
@@ -264,31 +273,91 @@ void setup() {
       loopCount--;
       i += 1;
   }
+  Serial.println("END SETUP.  ENTER LOOP\n");
 }
-
-#define BUF_SIZE 16
-#define ARR_SIZE 5
-
-int loopCount = 9999;
-int startTime;
-int stopTime;
 
 void loop() {
 
+  //CAN.readMsgBuf(&len,buf);
+  receiveMsg(msgReceived, MSG_SIZE);
+  int state = 1;
 
-  CAN.recvMsgBuf(&len,buf);
   switch(state) {
-      case 1:
-          // check buf and do something based on data in the message and the current state
-          state = x;  change state to another state if necessary
-      case 2:
-          // check buf and do something based on data in the message and the current state
-          state = x;  change state to another state if necessary
+      //States 0-99 are for standard operation
+      //States 100-200 are for testing purposes
+      //States 900-999 are for error handling/exceptions
 
-      case 3:
-          // check buf and do something based on data in the message and the current state
-          state = x;  change state to another state if necessary
-        }
+      case 0:
+          //Resynchronization with sender
+          Serial.println("RESYNC REQUEST RECEIVED!");
+          Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+          Serial.println();
+          response[0] = 's';
+
+          //Take extra step to resync with sender.  This might solve desync issues causing Bloom Filter failures.
+          response[0] = 'Y';
+          Serial.println("Sending OK to receive");
+          // Declare that this node is ready to receive messages
+          sendMsg(response);
+          Serial.println("OK Sent!");
+          while (msgReceived[0] != 'G') {
+              receiveMsg(msgReceived, 1);
+          }
+
+          Serial.println("Ready to Go!");
+
+
+      case 1:
+          // Check Message and decrypt using private key
+          // RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
+          // Bob (receiver) gets a message from Alice (sender)
+          for (int i = 0; i < MSGS_PER_KEY; i++) {
+              receiveMsg(msgReceived, MSG_SIZE);
+
+              //Bob (receiver) does the second layer of encryption on the received message, to get the shared key
+              for ( int x = 0; x < MSG_SIZE; x++) {
+                  msgReceived[x] = powMod(msgReceived[x], privateKey[(i*MSG_SIZE) + x], prime);
+                  DIFFIE_KEY[(i*MSG_SIZE) + x] = msgReceived[x];
+              }
+          }
+
+          if (msgReceived[0] == 'R'){
+              state = 0; //Resync state
+          }
+          else {
+              state = 2;  //Change to response state
+          }
+
+      case 2:
+          // Respond to sender
+          srand(EEPROM[0]); //generate random delay times for responses
+          for ( int i = 0; i < MSGS_PER_KEY; i++) {
+              // Bob makes the response
+              for ( int x = 0; x < MSG_SIZE; x++ ){
+                  response[x] = powMod(generator, privateKey[(i*4) + x], prime); // This is Bob's half-encrypted shared key
+              }
+
+              //Bob sends the response
+              sendMsg(response);
+          }
+
+          //Switch to state 101 is for testing purposes
+          state = 101;
+
+      case 101:
+          //Print out the Key
+          Serial.print("SHARED KEY:");
+          for (int c = 0; c < KEY_SIZE; c++) {
+              Serial.print(" ");
+              Serial.print(DIFFIE_KEY[c]);
+          }
+
+      case 102:
+          //Bloom Filter testing
+          //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
+          receiveMsg_BLOOM(msgReceived, MSG_SIZE);
+
+  }
 
 
 }

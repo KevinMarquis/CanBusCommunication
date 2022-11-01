@@ -259,7 +259,7 @@ void setup() {
           sendMsg(&hash[i][8],  8, nodeID[i]);
           sendMsg(&hash[i][16], 4, nodeID[i]);
           delay(500);
-          i += 1
+          i += 1;
       }
   }
 }
@@ -269,6 +269,13 @@ void setup() {
 
 void loop() {
 
+    int state = 1;
+    switch(state){
+        case 1:
+            state = 1;
+
+
+    }
 
 
 }
