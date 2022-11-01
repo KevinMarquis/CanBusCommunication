@@ -107,6 +107,11 @@ uint8_t findNode(const uint8_t msgID);
 
 void verifyThisNode();
 
+// Message Storage Arrays
+uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
+uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
+uint8_t response[CAN_MAX];     // Needs to be bigger
+
 // SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 void setup() {
   Serial.begin(115200);
@@ -118,11 +123,6 @@ void setup() {
     Serial.println("Init CAN BUS Shield again");
     delay(100);
   }
-
-  // Message Storage Arrays
-  uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
-  uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
-  uint8_t response[CAN_MAX];     // Needs to be bigger
   
   for (int i = 0; i < NUM_NODES; i++) {
     msgCounter[i] = 0;
@@ -271,9 +271,77 @@ void loop() {
 
     int state = 1;
     switch(state){
-        case 1:
-            state = 1;
 
+        case 0:
+            //Resynchronization
+            Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+            response[0] = 'R';
+            Serial.println("Sending OK to resync");
+            sendMsg(response, 1, thisID);
+            response[0] = 's';
+
+            Serial.println();
+            Serial.println("RESYNCHRONIZING NODES");
+            Serial.println("WAITING FOR RECEIVERS...");
+            // Wait until every receiving node is ready
+            for (int i = 0; i < NUM_NODES; i++) {
+                while (response[0] != 'Y') {
+                    receiveMsg(response, 1);
+                }
+                response[0] = 's';
+                Serial.print("Node #");
+                Serial.print(i+1);
+                Serial.println(" is Ready!");
+
+            }
+
+            msgSent[0] = 'G';
+            sendMsg(msgSent, MSG_SIZE, thisID);
+
+        case 1:
+            //Send message to all receiver nodes ("Bobs")
+
+            // Alice (sender) sends a message to Bob (receiver)
+            for (int i = 0; i < MSGS_PER_KEY; i++) {
+                // Alice generates a message
+                for ( int x = 0; x < MSG_SIZE; x++ ){
+                    msgSent[x] = powMod(generator, privateKey[(i*MSG_SIZE) + x], prime); // This is Alice's half-encrypted shared key
+                }
+
+                // Alice sends the message
+                delay(200);
+                sendMsg(msgSent, MSG_SIZE, thisID);
+            }
+            state = 2;  //Switch to response state in preparation for a reply from each receiver
+
+        case 2:
+            //Receive a message from all receiver nodes ("Bobs")
+            // Alice (sender) receives responses from every Bob (receivers)
+            for (int i = 0; i < (NUM_NODES * MSG_SIZE); i++) {
+                Serial.print("Msg #");
+                Serial.println(i);
+                receiveMsg(response, MSG_SIZE);
+                printMsg(response);
+
+                // Alice Processes the response using her own private key
+                for (int x = 0; x < MSG_SIZE; x++) {
+                    uint8_t keyPiece = privateKey[msgCounter[findNode(responderID)]] + x;
+                    response[x] = powMod(response[x], keyPiece, prime);
+                }
+
+                recordMsg(response);
+            }
+
+        case 101:
+            //Prints keys out for testing purposes
+            printKeys();
+
+        case 102:
+            //Bloom Filter testing (to be folded into main sender testing)
+            sendMsg(msgSent, MSG_SIZE, 'X');
+            verifyThisNode();
+            sendMsg(msgSent, MSG_SIZE, nodeID[0]);
+            verifyThisNode();
 
     }
 

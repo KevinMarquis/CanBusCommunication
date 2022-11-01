@@ -352,10 +352,12 @@ void loop() {
               Serial.print(DIFFIE_KEY[c]);
           }
 
-      case 102:
+      case 102: //TODO create a bloom filter check function
           //Bloom Filter testing
           //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
+          receiveMsg_BLOOM(msgReceived, MSG_SIZE);
+
 
   }
 
