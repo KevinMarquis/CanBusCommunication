@@ -321,11 +321,11 @@ void loop() {
 
         case 102:
             //Bloom Filter testing (to be folded into main sender testing)
-            sendMsg(msgSent, MSG_SIZE, nodeID[0]);
+            sendMsg(msgSent, MSG_SIZE, 'X');
             Serial.println("First Check sent.");
             verifyThisNode();
             Serial.println("Verification complete.  Proceeding to second test.");
-            sendMsg(msgSent, MSG_SIZE, 'X');
+            sendMsg(msgSent, MSG_SIZE, nodeID[0]);
             Serial.println("Second Check sent.");
             verifyThisNode();
             Serial.println("Second test complete.");
