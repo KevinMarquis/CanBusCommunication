@@ -127,12 +127,16 @@ void setup() {
     Serial.println("Init CAN BUS Shield again");
     delay(100);
   }
+  Serial.println("PRINTING OUT BLOOM FILTER (TROUBLESHOOT CHECK):\n");
+  for (int i = 0; i < 128; i++) {
+      Serial.print(EEPROM[i + 16]);
+  }
 
   //uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
   //uint8_t response[MSG_SIZE];      //One quarter of a message sent
   //uint8_t privateKey[KEY_SIZE];
 
-  Serial.println("Starting Private Key Generation...");
+  Serial.println("\n\nStarting Private Key Generation...");
   // Bob generates his private key
   for (int i = 0; i < KEY_SIZE; i++) {
     privateKey[i] = keyGen(i); //privateKey = 0 -> keyGen(i) = 0
@@ -303,7 +307,9 @@ void loop() {
       case 102: //TODO create a bloom filter check function
           //Bloom Filter testing
           //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
+          Serial.println("First Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
+          Serial.println("Second Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
           state = 1;
           break;
@@ -450,7 +456,7 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
 
 // Bloom Filter Functions |---------------------------------------------------------------------------------------------------------------
 bool isValid(uint8_t* puf) {
-    Serial.println("Starting isValid:");
+  Serial.println("Starting isValid:");
   // After the unknown node sends its SRAM PUF, make a hash from the PUF.
   uint16_t index[7];
   getIndexes(index, puf);
@@ -460,12 +466,15 @@ bool isValid(uint8_t* puf) {
   //For each index, check if the index is a 1.
   for (int i = 0; i < 7; i++) {
     uint8_t byteNum = index[i] / 8;      // Index of the byte to be read
-    Serial.print("Value of Byte: ");
+    Serial.print("Index of Byte: ");
     Serial.println(byteNum);
 
     uint8_t bitNum = index[i] % 8;       // Index of the bit to be read from within the byte
-    Serial.print("Value of Bit: ");
+    Serial.print("Index of Bit: ");
     Serial.println(bitNum);
+
+    Serial.print("Value at the index: ");
+    Serial.println(bitRead(EEPROM[byteNum+16], bitNum));
 
       //If the index is not a 1, then this node isn't valid.
     if (!bitRead(EEPROM[byteNum+16], bitNum)) {
@@ -549,6 +558,11 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
     uint8_t fishyPuf[16];
 
     senderID = 'X';
+    Serial.print("Sender ID: ");
+    Serial.println(senderID);
+    Serial.print("True Sender ID: ");
+    Serial.println(trueSenderID);
+
     while (senderID != trueSenderID) {
       receiveMsg(fishyPuf, 8);
     }

@@ -123,7 +123,12 @@ void setup() {
     Serial.println("Init CAN BUS Shield again");
     delay(100);
   }
-  
+  Serial.println("PRINTING OUT BLOOM FILTER (TROUBLESHOOT CHECK):\n");
+  for (int i = 0; i < 128; i++) {
+      Serial.print(EEPROM[i + 16]);
+  }
+
+
   for (int i = 0; i < NUM_NODES; i++) {
     msgCounter[i] = 0;
   }
@@ -143,11 +148,16 @@ void setup() {
   }
   
   response[0] = 's';
-  
+
+
   Serial.println();
   Serial.println("WAITING FOR RECEIVERS...");
   // Wait until every receiving node is ready
   for (int i = 0; i < NUM_NODES; i++) {
+    Serial.print("Number of Nodes: ");
+    Serial.println(NUM_NODES);
+    Serial.print("Current iterator value: ");
+    Serial.println(i);
     while (response[0] != 'Y') {
       receiveMsg(response, 1);
     }
@@ -311,10 +321,14 @@ void loop() {
 
         case 102:
             //Bloom Filter testing (to be folded into main sender testing)
-            sendMsg(msgSent, MSG_SIZE, 'X');
-            verifyThisNode();
             sendMsg(msgSent, MSG_SIZE, nodeID[0]);
+            Serial.println("First Check sent.");
             verifyThisNode();
+            Serial.println("Verification complete.  Proceeding to second test.");
+            sendMsg(msgSent, MSG_SIZE, 'X');
+            Serial.println("Second Check sent.");
+            verifyThisNode();
+            Serial.println("Second test complete.");
 
             state = 1;
             break;
