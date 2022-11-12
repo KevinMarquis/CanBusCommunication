@@ -154,10 +154,10 @@ void setup() {
   Serial.println("WAITING FOR RECEIVERS...");
   // Wait until every receiving node is ready
   for (int i = 0; i < NUM_NODES; i++) {
-    Serial.print("Number of Nodes: ");
-    Serial.println(NUM_NODES);
-    Serial.print("Current iterator value: ");
-    Serial.println(i);
+    //Serial.print("Number of Nodes: ");
+    //Serial.println(NUM_NODES);
+    //Serial.print("Current iterator value: ");
+    //Serial.println(i);
     while (response[0] != 'Y') {
       receiveMsg(response, 1);
     }
@@ -242,7 +242,7 @@ void setup() {
 
 
 
-int state = 102;
+int state = 103;
 void loop() {
     Serial.println("Looping...");
     switch(state){
@@ -325,15 +325,20 @@ void loop() {
             Serial.println("First Check sent.");
             verifyThisNode();
             Serial.println("Verification complete.  Proceeding to second test.");
+            state = 1;
+            break;
+
+        case 103:
+            Serial.println("Second test.");
             sendMsg(msgSent, MSG_SIZE, nodeID[0]);
             Serial.println("Second Check sent.");
             verifyThisNode();
             Serial.println("Second test complete.");
 
-            state = 1;
+            state = 102;
             break;
 
-        case 103:
+        case 104:
             //Hashing tests
             Serial.println();
             Serial.println();

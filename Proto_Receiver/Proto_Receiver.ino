@@ -220,7 +220,7 @@ void setup() {
   Serial.println("END SETUP.  ENTER LOOP\n");
 }
 
-int state = 102;
+int state = 103;
 void loop() {
   Serial.println("Looping...");
   //CAN.readMsgBuf(&len,buf);
@@ -309,12 +309,17 @@ void loop() {
           //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
           Serial.println("First Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
-          Serial.println("Second Test: ");
-          receiveMsg_BLOOM(msgReceived, MSG_SIZE);
           state = 1;
           break;
 
       case 103:
+          Serial.println("Second Test: ");
+          receiveMsg_BLOOM(msgReceived, MSG_SIZE);
+          state = 102;
+          break;
+
+
+      case 104:
           Serial.println("\n\n---------- | HASHING |----------\n");
           int i = 0;  //Define iterator for hashing tests
           while (i <= 10){
@@ -492,6 +497,10 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
   //Hash the SRAM PUF (First 16 Bytes)
   uint8_t hash[9];
   spritz_hash(hash, 9, puf, 16);
+
+  for (int i=0; i<9; i++) {
+      Serial.println(hash[i]);
+  }
 
   // Split the hash into 10-bit pieces in the following order:
   //1111 1111 1100 0000 -> Shift 6 to right
