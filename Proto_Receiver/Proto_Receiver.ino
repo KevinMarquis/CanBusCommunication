@@ -73,6 +73,16 @@ uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
 uint8_t trueSenderID;
 uint8_t senderID = 'X';
+uint8_t TestSenderID = 'X';  //This is a testing variable.  We can remove it later.
+const uint8_t sramPUF[4][16] = {
+        { 0xBE, 0x59, 0x37, 0xF8, 0xC6, 0x3E, 0xA7, 0xAA, 0xED, 0xB9, 0x9F, 0xBA, 0xBB, 0xEB, 0xB5, 0x35 }, //A
+        //{ 0xFA, 0xF3, 0x31, 0x93, 0xEC, 0xED, 0xE8, 0x1F, 0xAD, 0x93, 0x3A, 0xB2, 0x7E, 0x3, 0xEF, 0x1D },  //B
+        { 0xFE, 0xAF, 0xC5, 0xBE, 0xB2, 0x36, 0x38, 0x7A, 0x2F, 0xFF, 0xBD, 0x9C, 0xEF, 0xF6, 0xD0, 0xCE }, //B
+        //{ 0xF3, 0xCD, 0xF5, 0xF5, 0xDE, 0xFC, 0xFD, 0x39, 0x77, 0x98, 0xF6, 0x71, 0xBE, 0xFB, 0x3F, 0xF1 }, //C
+        { 0xBF, 0xFC, 0x8E, 0xF6, 0xF4, 0x6F, 0x76, 0x3B, 0xBB, 0x73, 0xF1, 0xEF, 0x7D, 0xE5, 0x1A, 0x3D }, //C
+        //{ 0x74, 0x6F, 0xE6, 0x97, 0xDF, 0x86, 0xBB, 0xBE, 0xDF, 0xAC, 0xCE, 0xFE, 0x77, 0x5F, 0x6F, 0xD6 }  //D
+        { 0xE7, 0x9F, 0xD9, 0xAB, 0x69, 0x69, 0xFE, 0x6D, 0x77, 0xD5, 0x9D, 0xF3, 0x6F, 0xBD, 0xAD, 0xED }  //D
+};
 
 // Pins & LEDs
 #define SPI_CS_PIN 10
@@ -127,10 +137,24 @@ void setup() {
     Serial.println("Init CAN BUS Shield again");
     delay(100);
   }
-  Serial.println("PRINTING OUT BLOOM FILTER (TROUBLESHOOT CHECK):\n");
-  for (int i = 0; i < 128; i++) {
-      Serial.print(EEPROM[i + 16]);
-  }
+  //Serial.println("PRINTING OUT BLOOM FILTER (TROUBLESHOOT CHECK):\n");
+  //for (int i = 0; i < 128; i++) {
+  //    Serial.print(EEPROM[i + 16]);
+  //}
+
+//  isValid(nodeID[0]);
+//  Serial.println("\n\n\n");
+//  isValid(nodeID[1]);
+//  Serial.println("\n\n\n");
+//  isValid(nodeID[2]);
+//  Serial.println("\n\n\n");
+//  isValid(nodeID[3]);
+//  Serial.println("\n\n\n");
+//  isValid(0xFF);
+//  isValid(190);
+//  Serial.println("Node0^\n\n\nX |/");
+//  isValid(88);
+
 
   //uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
   //uint8_t response[MSG_SIZE];      //One quarter of a message sent
@@ -153,6 +177,8 @@ void setup() {
   trueSenderID = senderID;
 
   Serial.println("Ready to Go!");
+
+
 
 
 //// RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
@@ -220,7 +246,7 @@ void setup() {
   Serial.println("END SETUP.  ENTER LOOP\n");
 }
 
-int state = 103;
+int state = 102;
 void loop() {
   Serial.println("Looping...");
   //CAN.readMsgBuf(&len,buf);
@@ -315,7 +341,7 @@ void loop() {
       case 103:
           Serial.println("Second Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
-          state = 102;
+          state = 1;
           break;
 
 
@@ -461,16 +487,24 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
 
 // Bloom Filter Functions |---------------------------------------------------------------------------------------------------------------
 bool isValid(uint8_t* puf) {
-  Serial.println("Starting isValid:");
+  Serial.println("Starting isValid:\n\n\n");
   // After the unknown node sends its SRAM PUF, make a hash from the PUF.
   uint16_t index[7];
-  getIndexes(index, puf);
-  Serial.println("SRAM PUF hashed.");
 
-  Serial.println("Running through index, check for 1");
+  //Hardcoding only for testing
+  //TODO: code in some logic to find the indexes from the associated PUF, given a nodeID.
+  //TODO: Go through and check why the code stalls after a safe node return
+  //TODO: Clean up some of the debug code here, switch cases. Ensure it still works.
+  getIndexes(index, sramPUF[3]);
+
+  //getIndexes(index, puf);
+
+  Serial.println("\nSRAM PUF hashed.");
+
+  //Serial.println("Running through index, check for 1");
   //For each index, check if the index is a 1.
   for (int i = 0; i < 7; i++) {
-    uint8_t byteNum = index[i] / 8;      // Index of the byte to be read
+    uint8_t byteNum = index[i] / 8;      // IndexS of the byte to be read
     Serial.print("Index of Byte: ");
     Serial.println(byteNum);
 
@@ -483,17 +517,20 @@ bool isValid(uint8_t* puf) {
 
       //If the index is not a 1, then this node isn't valid.
     if (!bitRead(EEPROM[byteNum+16], bitNum)) {
+      Serial.println("IsValid Returning False.") ;
       return false;
     }
   }
 
-  return true;
+    Serial.println("IsValid Returning True.") ;
+    return true;
 }
 
 void getIndexes(uint16_t* indexes, uint8_t* puf) {
   //The puf is 16 bytes long, the index is 7 bytes long.
   const uint8_t k = 7; //Number of indexes to be made from the hash
 
+  Serial.println("PRINTING HASH OF NODE ID\n\n\n");
   //Hash the SRAM PUF (First 16 Bytes)
   uint8_t hash[9];
   spritz_hash(hash, 9, puf, 16);
@@ -501,7 +538,7 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
   for (int i=0; i<9; i++) {
       Serial.println(hash[i]);
   }
-
+  Serial.println("\n\n\n");
   // Split the hash into 10-bit pieces in the following order:
   //1111 1111 1100 0000 -> Shift 6 to right
   //0011 1111 1111 0000 -> 4 to right
@@ -558,6 +595,8 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
   byte len = MSG_SIZE;
   CAN.readMsgBuf(&len, temp);
   senderID = CAN.getCanId();
+  Serial.println("\n\nSender ID:");
+  Serial.println(senderID);
   bool senderIsValid = true;
 
   if (isFishy()) {
@@ -566,18 +605,24 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
 
     uint8_t fishyPuf[16];
 
-    senderID = 'X';
-    Serial.print("Sender ID: ");
-    Serial.println(senderID);
-    Serial.print("True Sender ID: ");
-    Serial.println(trueSenderID);
+    //senderID = 'X';
+    TestSenderID = 'X';
 
-    while (senderID != trueSenderID) {
-      receiveMsg(fishyPuf, 8);
-    }
-    receiveMsg(&fishyPuf[8], 8);
+      //Serial.print("Sender ID: ");
+    //Serial.println(senderID);
+    //Serial.print("True Sender ID: ");
+    //Serial.println(trueSenderID);
 
-    senderIsValid = isValid(fishyPuf);
+    //while (TestSenderID != trueSenderID) {
+    //while (senderID != trueSenderID) {
+    //  receiveMsg(fishyPuf, 8);
+    //}
+    //receiveMsg(&fishyPuf[8], 8);
+    //senderIsValid = isValid(fishyPuf);
+    //senderIsValid = isValid(TestSenderID);
+
+    senderIsValid = isValid(senderID);
+
   }
   else {
     uint8_t no[4] = {'N', 'N', 'N', 'N'};
@@ -600,15 +645,16 @@ bool isFishy() {
     Serial.println("Running isFishy()...");
   for (int i = 0; i < 4; i++) {
       //DEBUG CODE:
-      if (i==0){
-          Serial.println("Checking against Node A");      }
-      else if (i==1){
-          Serial.println("Checking against Node B");      }
-      else if (i==2){
-          Serial.println("Checking against Node C");      }
-      else if (i==3){
-          Serial.println("Checking against Node D");
-      }
+
+//      if (i==0){
+//          Serial.println("Checking against Node A");      }
+//      else if (i==1){
+//          Serial.println("Checking against Node B");      }
+//      else if (i==2){
+//          Serial.println("Checking against Node C");      }
+//      else if (i==3){
+//          Serial.println("Checking against Node D");
+//      }
     if (senderID != nodeID[i] && senderID != 0) { //ALL_RECEIVE = 0 in sender program
         Serial.println("isFishy determined TRUE");
         return true;

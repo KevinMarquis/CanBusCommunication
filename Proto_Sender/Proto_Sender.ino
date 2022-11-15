@@ -330,12 +330,13 @@ void loop() {
 
         case 103:
             Serial.println("Second test.");
-            sendMsg(msgSent, MSG_SIZE, nodeID[0]);
+            //sendMsg(msgSent, MSG_SIZE, nodeID[0]);
+            sendMsg(msgSent, MSG_SIZE, thisID);
             Serial.println("Second Check sent.");
             verifyThisNode();
             Serial.println("Second test complete.");
 
-            state = 102;
+            state = 1;
             break;
 
         case 104:
@@ -515,6 +516,8 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
 
 // MESSAGE COMMUNICATION FUNCTIONS |------------------------------------------------------------------------------------------------------
 void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID) {
+  Serial.print("RECEIVER ID: ");
+  Serial.println(receiverID);
   CAN.sendMsgBuf(receiverID, 0, msgLength, msg);
   delay(200);
 }
