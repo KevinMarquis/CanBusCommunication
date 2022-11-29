@@ -105,7 +105,7 @@ uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simp
 
 
 
-//FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
+///FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
 // KEY GENERATION
 uint8_t keyGen(int i);                            // Generates 1 byte, "a", of the 16-byte key.
 uint8_t mulMod(uint8_t a, uint8_t b, uint8_t m);  // (a*b) mod m
@@ -125,7 +125,7 @@ uint8_t privateKey[KEY_SIZE];
 
 bool isFishy();
 
-// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+/// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 void setup() {
   Serial.begin(115200);
   pinMode(LED,OUTPUT);
@@ -178,74 +178,10 @@ void setup() {
 
   Serial.println("Ready to Go!");
 
-
-
-
-//// RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
-//  // Bob (receiver) gets a message from Alice (sender)
-//  for (int i = 0; i < MSGS_PER_KEY; i++) {
-//    receiveMsg(msgReceived, MSG_SIZE);
-//
-//    //Bob (receiver) does the second layer of encryption on the received message, to get the shared key
-//    for ( int x = 0; x < MSG_SIZE; x++) {
-//      msgReceived[x] = powMod(msgReceived[x], privateKey[(i*MSG_SIZE) + x], prime);
-//      DIFFIE_KEY[(i*MSG_SIZE) + x] = msgReceived[x];
-//    }
-//  }
-//
-//// RESPONDS |-----------------------------------------------------------------------------------------------------------------------------
-//  // Bob (receiver) responds to Alice (sender)
-//  srand(EEPROM[0]); //Randomizes delay times for responses
-//  for ( int i = 0; i < MSGS_PER_KEY; i++) {
-//    // Bob makes the response
-//    for ( int x = 0; x < MSG_SIZE; x++ ){
-//      response[x] = powMod(generator, privateKey[(i*4) + x], prime); // This is Bob's half-encrypted shared key
-//    }
-//
-//    //Bob sends the response
-//    sendMsg(response);
-//  }
-//
-//// PRINT OUT |----------------------------------------------------------------------------------------------------------------------------
-//  //Print out the Key
-//  Serial.print("SHARED KEY:");
-//  for (int c = 0; c < KEY_SIZE; c++) {
-//    Serial.print(" ");
-//    Serial.print(DIFFIE_KEY[c]);
-//  }
-//    Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
-//    Serial.println();
-//    Serial.println("Awaiting Resync Request from Sender...");
-//    while (response[0] != 'Y') {
-//        receiveMsg(response, 1);
-//    }
-//    response[0] = 's';
-//    Serial.println("RESYNC REQUEST RECEIVED!");
-//
-//    //Take extra step to resync with sender.  This might solve desync issues causing Bloom Filter failures.
-//    Serial.println();
-//    Serial.println("RESYNCHRONIZING WITH SENDER");
-//    response[0] = 'Y';
-//    Serial.println("Sending OK to receive");
-//    // Declare that this node is ready to receive messages
-//    sendMsg(response);
-//    Serial.println("OK Sent!");
-//    while (msgReceived[0] != 'G') {
-//        receiveMsg(msgReceived, 1);
-//    }
-//
-//    Serial.println("Ready to Go!");
-//
-//  Serial.println("\n\n---------- | BLOOM FILTER |----------\n");
-//
-//
-//  //A message with a false ID is purposefully sent to the node to see if the filter is working.
-//  receiveMsg_BLOOM(msgReceived, MSG_SIZE);
-//
-//  receiveMsg_BLOOM(msgReceived, MSG_SIZE);
   Serial.println("END SETUP.  ENTER LOOP\n");
 }
 
+//NOTE: The Different tests do not currently function perfectly when executed sequentially, due to desync issues.  However, each test is individually valid.  Functions will still work when executed sequentially.
 int state = 1;
 void loop() {
   Serial.println("Looping...");
@@ -256,7 +192,7 @@ void loop() {
       //States 0-99 are for standard operation
       //States 100-200 are for testing purposes
       //States 900-999 are for error handling/exceptions
-      case 1000:
+      case 0:
           Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
           Serial.println();
           Serial.println("Awaiting Resync Request from Sender...");
@@ -282,44 +218,8 @@ void loop() {
           state = 1;
           break;
 
-
-      case 100:
-          delay(500);
-          Serial.println("Sending OK to receive");
-          // Declare that this node is ready to receive messages
-          sendMsg(response);
-          Serial.println("OK Sent!");
-          while (msgReceived[0] != 'G') {
-              receiveMsg(msgReceived, 1);
-          }
-          trueSenderID = senderID;
-
-          Serial.println("Ready to Go!");
-          state = 1;
-          break;
-      case 0:
-          //Resynchronization with sender
-          Serial.println("RESYNC REQUEST RECEIVED!");
-          Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
-          Serial.println();
-          response[0] = 's';
-
-          //Take extra step to resync with sender.  This might solve desync issues causing Bloom Filter failures.
-          response[0] = 'Y';
-          Serial.println("Sending OK to receive");
-          // Declare that this node is ready to receive messages
-          sendMsg(response);
-          Serial.println("OK Sent!");
-          while (msgReceived[0] != 'G') {
-              receiveMsg(msgReceived, 1);
-          }
-
-          Serial.println("Ready to Go!");
-          state = 1;
-          break;
-
-
       case 1:
+          //// RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
           Serial.println("Entering state 1");
           // Check Message and decrypt using private key
           // RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
@@ -327,28 +227,18 @@ void loop() {
           for (int i = 0; i < MSGS_PER_KEY; i++) {
               receiveMsg(msgReceived, MSG_SIZE);
 
-//              Serial.println("Checking for resync request");
-//              if (msgReceived[0] == 'R'){
-//                  state = 0; //Resync state
-//                  break;
-//              }
-
               //Bob (receiver) does the second layer of encryption on the received message, to get the shared key
               for ( int x = 0; x < MSG_SIZE; x++) {
                   msgReceived[x] = powMod(msgReceived[x], privateKey[(i*MSG_SIZE) + x], prime);
                   DIFFIE_KEY[(i*MSG_SIZE) + x] = msgReceived[x];
               }
           }
-//          Serial.println("Checking for resync request");
-//          if (msgReceived[0] == 'R'){
-//              state = 0; //Resync state
-//              break;
-//          }
           Serial.println("Moving to state 2");
           state = 2;  //Change to response state
           break;
 
       case 2:
+          //// RESPONDS |-----------------------------------------------------------------------------------------------------------------------------
           Serial.println("Entering state 2");
           // Respond to sender
           srand(EEPROM[0]); //generate random delay times for responses
@@ -367,13 +257,14 @@ void loop() {
           break;
 
       case 101:
+          //// PRINT OUT |----------------------------------------------------------------------------------------------------------------------------
           //Print out the Key
           Serial.print("SHARED KEY:");
           for (int c = 0; c < KEY_SIZE; c++) {
               Serial.print(" ");
               Serial.print(DIFFIE_KEY[c]);
           }
-          state = 1000;
+          state = 102;
           break;
 
       case 102: //TODO create a bloom filter check function
@@ -381,22 +272,23 @@ void loop() {
           //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
           Serial.println("First Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
-          state = 1;
+          delay(1000); //Wait for 1 second - let the sender get ahead.
+          state = 103;
           break;
 
       case 103:
           Serial.println("Second Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
-          state = 1;
-          //TODO: just check this out before we continue
           delay(1000); //Wait for 1 second - let the sender get ahead.
+          state = 0;
           break;
 
 
       case 104:
           Serial.println("\n\n---------- | HASHING |----------\n");
-          int i = 0;  //Define iterator for hashing tests
-          while (i <= 10){
+          //int i = 0;  //Define iterator for hashing tests
+          while(true) {
+          //while (i < 10){
               unsigned char arr[ARR_SIZE] = "56789";
               unsigned char arr1[ARR_SIZE] = "00000";
 
@@ -435,9 +327,8 @@ void loop() {
 
               if (!spritz_compare(hash, rHash, HASH_SIZE)) {
                   Serial.print("Failed - ");
-                  Serial.println(((stopTime - startTime)/10000.0) - 1200);
-              }
-              else {
+                  Serial.println(((stopTime - startTime) / 10000.0) - 1200);
+              } else {
                   Serial.print("\nSuccess!! The correct message is received");
               }
 
@@ -446,15 +337,15 @@ void loop() {
               if (loopCount == 0) {
                   stopTime = millis();
                   Serial.print("Time in mili seconds : ");
-                  Serial.println(((stopTime - startTime)/10000.0) - 1200);
+                  Serial.println(((stopTime - startTime) / 10000.0) - 1200);
                   Serial.print("Time in seconds : ");
-                  Serial.println((((stopTime - startTime)/10000.0) - 1200)/1000.0);
+                  Serial.println((((stopTime - startTime) / 10000.0) - 1200) / 1000.0);
                   loopCount = 9999;
               }
               loopCount--;
-              i += 1;
+              //i++;
           }
-          state = 1;
+          state = 0;
           break;
 
       default:
@@ -539,8 +430,7 @@ bool isValid(uint8_t* puf) {
   // After the unknown node sends its SRAM PUF, make a hash from the PUF.
   uint16_t index[7];
 
-  //Hardcoding only for testing
-  //TODO: code in some logic to find the indexes from the associated PUF, given a nodeID.
+  //logic to find the indexes from the associated PUF, given a nodeID.
   //TODO: for now, we can leave it like this.  In the future, I would like to have the message send the PUF, which we will check directly wit getIndexes instead of these if statements
   if (puf == nodeID[0]){
       getIndexes(index, sramPUF[0]);
@@ -558,7 +448,6 @@ bool isValid(uint8_t* puf) {
       return false;
   }
 
-  //TODO: Go through and check why the code stalls after a safe node return
   //TODO: Clean up some of the debug code here, switch cases. Ensure it still works.
   //getIndexes(index, sramPUF[3]);  This particular line shows that isValid can work
 

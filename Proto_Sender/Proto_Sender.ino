@@ -68,6 +68,7 @@ uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
 
 
+
 // Hashing Variables
 #define HASH_SIZE 20
 uint8_t hash[NUM_NODES][HASH_SIZE];
@@ -79,18 +80,18 @@ uint8_t msgCounter[NUM_NODES];
 uint8_t responderID;
 MCP_CAN CAN(SPI_CS_PIN);
 
-//FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
+///FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
 // KEY GENERATION 
 uint8_t keyGen(int i);                            // Generates 1 byte, "a", of the 16-byte key. 
 uint8_t mulMod(uint8_t a, uint8_t b, uint8_t m);  // (a*b) mod m
 uint8_t powMod(uint8_t b, uint8_t e, uint8_t m);  // (b^e) mod m
 
 
-// Bloom Filter Functions
+/// Bloom Filter Functions
 bool isValid(uint8_t* puf);     
 void getIndexes(uint16_t* indexes, uint8_t* puf);
 
-// COMMUNICATION FUNCTIONS 
+/// COMMUNICATION FUNCTIONS
 
 
 void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID);
@@ -99,7 +100,7 @@ void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID);
 void receiveMsg(uint8_t* msg, uint8_t msgLength);
 void printMsg(uint8_t* msg);
 
-// SENDER-SPECIFIC FUNCTIONS 
+/// SENDER-SPECIFIC FUNCTIONS
 void recordMsg(uint8_t* msg);
 void printKeys();
 
@@ -107,12 +108,12 @@ uint8_t findNode(const uint8_t msgID);
 
 void verifyThisNode();
 
-// Message Storage Arrays
+/// Message Storage Arrays
 uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
 uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
 uint8_t response[CAN_MAX];     // Needs to be bigger
 
-// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+/// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 void setup() {
   Serial.begin(115200);
   pinMode(LED,OUTPUT);
@@ -170,83 +171,14 @@ void setup() {
   msgSent[0] = 'G';
   sendMsg(msgSent, MSG_SIZE, thisID);
 
-//  Serial.println("Starting KeyGen");
-//// SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
-//  // Alice (sender) sends a message to Bob (receiver)
-//  for (int i = 0; i < MSGS_PER_KEY; i++) {
-//
-//    // Alice generates a message
-//    for ( int x = 0; x < MSG_SIZE; x++ ){
-//      msgSent[x] = powMod(generator, privateKey[(i*MSG_SIZE) + x], prime); // This is Alice's half-encrypted shared key
-//    }
-//
-//    // Alice sends the message
-//    delay(200);
-//    sendMsg(msgSent, MSG_SIZE, thisID);
-//  }
-//    Serial.println("Starting Key Receipt");
-//// RECEIVES RESPONSE |--------------------------------------------------------------------------------------------------------------------
-//  // Alice (sender) receives responses from every Bob (receivers)
-//  for (int i = 0; i < (NUM_NODES * MSG_SIZE); i++) {
-//    Serial.print("Msg #");
-//    Serial.println(i);
-//    receiveMsg(response, MSG_SIZE);
-//    printMsg(response);
-//
-//    // Alice Processes the response using her own private key
-//    for (int x = 0; x < MSG_SIZE; x++) {
-//      uint8_t keyPiece = privateKey[msgCounter[findNode(responderID)]] + x;
-//      response[x] = powMod(response[x], keyPiece, prime);
-//    }
-//
-//    recordMsg(response);
-//  }
-//
-//  printKeys();
-//  Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
-//  //Receivers always finish their work before the sender.  So, sender will send a resync request to receivers when he is ready.
-//  response[0] = 'Y';
-//  Serial.println("Sending OK to resync");
-//  // Declare that this node is ready to resync
-//  //for (ID in )
-//  sendMsg(response, 1, thisID);
-//  response[0] = 's';
-//
-//  //Resync before Bloom Filter test.  This may solve the issue regarding a desync that causes Bloom Filter failures.
-//  Serial.println();
-//  Serial.println("RESYNCHRONIZING NODES");
-//  Serial.println("WAITING FOR RECEIVERS...");
-//  // Wait until every receiving node is ready
-//  for (int i = 0; i < NUM_NODES; i++) {
-//      while (response[0] != 'Y') {
-//          receiveMsg(response, 1);
-//      }
-//      response[0] = 's';
-//      Serial.print("Node #");
-//      Serial.print(i+1);
-//      Serial.println(" is Ready!");
-//
-//  }
-//
-//  msgSent[0] = 'G';
-//  sendMsg(msgSent, MSG_SIZE, thisID);
-//
-//  Serial.println("\n\n---------- | BLOOM FILTER |----------\n");
-//  //A message with a false ID is purposefully sent to the node to see if the filter is working.
-//  sendMsg(msgSent, MSG_SIZE, 'X');
-//  verifyThisNode();
-//  sendMsg(msgSent, MSG_SIZE, nodeID[0]);
-//  verifyThisNode();
-
 }
 
-
-
+//NOTE: The Different tests do not currently function perfectly when executed sequentially, due to desync issues.  However, each test is individually valid.  Functions will still work when executed sequentially.
 int state = 1;
 void loop() {
     Serial.println("Looping...");
     switch(state){
-        case 1000:
+        case 0:
             Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
             //Receivers always finish their work before the sender.  So, sender will send a resync request to receivers when he is ready.
             response[0] = 'Y';
@@ -274,61 +206,12 @@ void loop() {
             }
             msgSent[0] = 'G';
             sendMsg(msgSent, MSG_SIZE, thisID);
-            state = 1;
-            break;
 
-        case 100:
-            Serial.println();
-            Serial.println("WAITING FOR RECEIVERS...");
-            // Wait until every receiving node is ready
-            for (int i = 0; i < NUM_NODES; i++) {
-                //Serial.print("Number of Nodes: ");
-                //Serial.println(NUM_NODES);
-                //Serial.print("Current iterator value: ");
-                //Serial.println(i);
-                while (response[0] != 'Y') {
-                    receiveMsg(response, 1);
-                }
-                response[0] = 's';
-                Serial.print("Node #");
-                Serial.print(i+1);
-                Serial.println(" is Ready!");
-
-            }
-            msgSent[0] = 'G';
-            sendMsg(msgSent, MSG_SIZE, thisID);
-            state = 1;
-            break;
-        case 0:
-            //Resynchronization
-            delay(1000);
-            Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
-            response[0] = 'R';
-            Serial.println("Sending OK to resync");
-            sendMsg(response, 1, thisID);
-            response[0] = 's';
-
-            Serial.println();
-            Serial.println("RESYNCHRONIZING NODES");
-            Serial.println("WAITING FOR RECEIVERS...");
-            // Wait until every receiving node is ready
-            for (int i = 0; i < NUM_NODES; i++) {
-                while (response[0] != 'Y') {
-                    receiveMsg(response, 1);
-                }
-                response[0] = 's';
-                Serial.print("Node #");
-                Serial.print(i+1);
-                Serial.println(" is Ready!");
-
-            }
-
-            msgSent[0] = 'G';
-            sendMsg(msgSent, MSG_SIZE, thisID);
             state = 1;
             break;
 
         case 1:
+            //// SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
             //Send message to all receiver nodes ("Bobs")
             Serial.println("Entering case 1");
             // Alice (sender) sends a message to Bob (receiver)
@@ -346,6 +229,7 @@ void loop() {
             break;
 
         case 2:
+            //// RECEIVES RESPONSE |--------------------------------------------------------------------------------------------------------------------
             //Receive a message from all receiver nodes ("Bobs")
             Serial.println("Entering case 2");
             // Alice (sender) receives responses from every Bob (receivers)
@@ -369,7 +253,7 @@ void loop() {
         case 101:
             //Prints keys out for testing purposes
             printKeys();
-            state = 1000;
+            state = 102;
             break;
 
         case 102:
@@ -378,7 +262,7 @@ void loop() {
             Serial.println("First Check sent.");
             verifyThisNode();
             Serial.println("Verification complete.  Proceeding to second test.");
-            state = 100;
+            state = 103;
             break;
 
         case 103:
@@ -389,7 +273,7 @@ void loop() {
             verifyThisNode();
             Serial.println("Second test complete.");
 
-            state = 100;
+            state = 0;
             break;
 
         case 104:
@@ -397,42 +281,34 @@ void loop() {
             Serial.println();
             Serial.println();
             Serial.println("---------- | HASHING |----------");
-            int i = 0;
-            while (i < 10){
+            //int i = 0;
+            //while (i < 20){
+            while(true) {
+
                 unsigned long time = millis();
                 Serial.print("Time: ");
-                Serial.println(time/1000);
+                Serial.println(time / 1000);
                 Serial.println("\n");
 
                 unsigned char arr[] = "56789";
-                sendMsg(arr,       5, thisID);
+                sendMsg(arr, 5, thisID);
 
                 for (int i = 0; i < NUM_NODES; i++) {
                     char stmp[16] = "1234567890123456";
                     spritz_mac(hash[i], HASH_SIZE, stmp, sizeof(stmp), DIFFIE_KEY[i], KEY_SIZE);
                     aes128_enc_single(DIFFIE_KEY[i], stmp);
-                    sendMsg(stmp,      8, nodeID[i]);
-                    sendMsg(&stmp[8],  8, nodeID[i]);
+                    sendMsg(stmp, 8, nodeID[i]);
+                    sendMsg(&stmp[8], 8, nodeID[i]);
                     delay(200);
                 }
-
-                Serial.println();
-
-
-
-                for (int i = 0; i < NUM_NODES; i++) {
-                    sendMsg(hash[i],     8, nodeID[i]);
-                    sendMsg(&hash[i][8],  8, nodeID[i]);
-                    sendMsg(&hash[i][16], 4, nodeID[i]);
-                    delay(500);
-                    i += 1;
-                }
+                //i++;
             }
-            state = 1;
+            state = 0;
             break;
 
         default:
-            Serial.println("Error: No Case with number");
+            Serial.print("Error: No Case with number");
+            Serial.println(state);
             state = 1;
             break;
     }
