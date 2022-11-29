@@ -246,7 +246,7 @@ void setup() {
   Serial.println("END SETUP.  ENTER LOOP\n");
 }
 
-int state = 102;
+int state = 1;
 void loop() {
   Serial.println("Looping...");
   //CAN.readMsgBuf(&len,buf);
@@ -256,7 +256,47 @@ void loop() {
       //States 0-99 are for standard operation
       //States 100-200 are for testing purposes
       //States 900-999 are for error handling/exceptions
+      case 1000:
+          Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+          Serial.println();
+          Serial.println("Awaiting Resync Request from Sender...");
+          while (response[0] != 'Y') {
+              receiveMsg(response, 1);
+          }
+          response[0] = 's';
+          Serial.println("RESYNC REQUEST RECEIVED!");
 
+          //Take extra step to resync with sender.  This might solve desync issues causing Bloom Filter failures.
+          Serial.println();
+          Serial.println("RESYNCHRONIZING WITH SENDER");
+          response[0] = 'Y';
+          Serial.println("Sending OK to receive");
+          // Declare that this node is ready to receive messages
+          sendMsg(response);
+          Serial.println("OK Sent!");
+          while (msgReceived[0] != 'G') {
+              receiveMsg(msgReceived, 1);
+          }
+
+          Serial.println("Ready to Go!");
+          state = 1;
+          break;
+
+
+      case 100:
+          delay(500);
+          Serial.println("Sending OK to receive");
+          // Declare that this node is ready to receive messages
+          sendMsg(response);
+          Serial.println("OK Sent!");
+          while (msgReceived[0] != 'G') {
+              receiveMsg(msgReceived, 1);
+          }
+          trueSenderID = senderID;
+
+          Serial.println("Ready to Go!");
+          state = 1;
+          break;
       case 0:
           //Resynchronization with sender
           Serial.println("RESYNC REQUEST RECEIVED!");
@@ -287,17 +327,23 @@ void loop() {
           for (int i = 0; i < MSGS_PER_KEY; i++) {
               receiveMsg(msgReceived, MSG_SIZE);
 
+//              Serial.println("Checking for resync request");
+//              if (msgReceived[0] == 'R'){
+//                  state = 0; //Resync state
+//                  break;
+//              }
+
               //Bob (receiver) does the second layer of encryption on the received message, to get the shared key
               for ( int x = 0; x < MSG_SIZE; x++) {
                   msgReceived[x] = powMod(msgReceived[x], privateKey[(i*MSG_SIZE) + x], prime);
                   DIFFIE_KEY[(i*MSG_SIZE) + x] = msgReceived[x];
               }
           }
-          Serial.println("Checking for resync request");
-          if (msgReceived[0] == 'R'){
-              state = 0; //Resync state
-              break;
-          }
+//          Serial.println("Checking for resync request");
+//          if (msgReceived[0] == 'R'){
+//              state = 0; //Resync state
+//              break;
+//          }
           Serial.println("Moving to state 2");
           state = 2;  //Change to response state
           break;
@@ -327,7 +373,7 @@ void loop() {
               Serial.print(" ");
               Serial.print(DIFFIE_KEY[c]);
           }
-          state = 1;
+          state = 1000;
           break;
 
       case 102: //TODO create a bloom filter check function
@@ -342,6 +388,8 @@ void loop() {
           Serial.println("Second Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
           state = 1;
+          //TODO: just check this out before we continue
+          delay(1000); //Wait for 1 second - let the sender get ahead.
           break;
 
 
@@ -493,9 +541,26 @@ bool isValid(uint8_t* puf) {
 
   //Hardcoding only for testing
   //TODO: code in some logic to find the indexes from the associated PUF, given a nodeID.
+  //TODO: for now, we can leave it like this.  In the future, I would like to have the message send the PUF, which we will check directly wit getIndexes instead of these if statements
+  if (puf == nodeID[0]){
+      getIndexes(index, sramPUF[0]);
+  }
+  else if (puf == nodeID[1]){
+      getIndexes(index, sramPUF[1]);
+  }
+  else if (puf == nodeID[2]){
+      getIndexes(index, sramPUF[2]);
+  }
+  else if (puf == nodeID[3]){
+      getIndexes(index, sramPUF[3]);
+  }
+  else{
+      return false;
+  }
+
   //TODO: Go through and check why the code stalls after a safe node return
   //TODO: Clean up some of the debug code here, switch cases. Ensure it still works.
-  getIndexes(index, sramPUF[3]);
+  //getIndexes(index, sramPUF[3]);  This particular line shows that isValid can work
 
   //getIndexes(index, puf);
 

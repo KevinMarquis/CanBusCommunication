@@ -242,13 +242,66 @@ void setup() {
 
 
 
-int state = 103;
+int state = 1;
 void loop() {
     Serial.println("Looping...");
     switch(state){
+        case 1000:
+            Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
+            //Receivers always finish their work before the sender.  So, sender will send a resync request to receivers when he is ready.
+            response[0] = 'Y';
+            Serial.println("Sending OK to resync");
+            // Declare that this node is ready to resync
+            //for (ID in )
+            sendMsg(response, 1, thisID);
+            response[0] = 's';
 
+            //Resync before Bloom Filter test.  This may solve the issue regarding a desync that causes Bloom Filter failures.
+            Serial.println();
+            Serial.println("RESYNCHRONIZING NODES");
+            Serial.println("WAITING FOR RECEIVERS...");
+            // Wait until every receiving node is ready
+            for (int i = 0; i < NUM_NODES; i++) {
+                while (response[0] != 'Y') {
+                    receiveMsg(response, 1);
+                }
+                response[0] = 's';
+                Serial.print("Node #");
+                Serial.print(i+1);
+                Serial.println(" is Ready!");
+
+
+            }
+            msgSent[0] = 'G';
+            sendMsg(msgSent, MSG_SIZE, thisID);
+            state = 1;
+            break;
+
+        case 100:
+            Serial.println();
+            Serial.println("WAITING FOR RECEIVERS...");
+            // Wait until every receiving node is ready
+            for (int i = 0; i < NUM_NODES; i++) {
+                //Serial.print("Number of Nodes: ");
+                //Serial.println(NUM_NODES);
+                //Serial.print("Current iterator value: ");
+                //Serial.println(i);
+                while (response[0] != 'Y') {
+                    receiveMsg(response, 1);
+                }
+                response[0] = 's';
+                Serial.print("Node #");
+                Serial.print(i+1);
+                Serial.println(" is Ready!");
+
+            }
+            msgSent[0] = 'G';
+            sendMsg(msgSent, MSG_SIZE, thisID);
+            state = 1;
+            break;
         case 0:
             //Resynchronization
+            delay(1000);
             Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
             response[0] = 'R';
             Serial.println("Sending OK to resync");
@@ -316,7 +369,7 @@ void loop() {
         case 101:
             //Prints keys out for testing purposes
             printKeys();
-            state = 1;
+            state = 1000;
             break;
 
         case 102:
@@ -325,7 +378,7 @@ void loop() {
             Serial.println("First Check sent.");
             verifyThisNode();
             Serial.println("Verification complete.  Proceeding to second test.");
-            state = 1;
+            state = 100;
             break;
 
         case 103:
@@ -336,7 +389,7 @@ void loop() {
             verifyThisNode();
             Serial.println("Second test complete.");
 
-            state = 1;
+            state = 100;
             break;
 
         case 104:
