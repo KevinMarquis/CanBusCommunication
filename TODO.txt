@@ -1,0 +1,10 @@
+The target of this branch is to consolidate the functionality of the four files into one.
+To this end, we need to do a few things:
+1. Check for overlap between files - 
+	determine what needs to be taken from each file and what is already in all
+2. Examine memory usage.  We don't necessarily need all the data to be stored in memory for each func.
+-> i.e.: we may be able to remove BF from memory once nodes are authenticated.
+	-> I'll belay this for now.  We may want to keep it in the event that a node is hotswapped.
+3. Merge/Create new files and then test.
+	-> I think we can make flags stored in EEPROM to show whether the PUF has already been generated.
+	-> At least for testing purposes, that can reduce wear on EEPROM and simplify the control flow of the programs.
