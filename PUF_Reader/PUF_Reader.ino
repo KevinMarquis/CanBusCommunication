@@ -3,6 +3,7 @@
 // List of SRAM values at startup
 // Address is dynamic. When globals are added/removed, the base address changes.
 unsigned char bytes[ 1024 ] __attribute__ ((section (".noinit")));
+//Initializes the char array, called "bytes"
 
 /*
 'A' == Uno-14402
@@ -68,7 +69,7 @@ void setup() {
 
   Serial.println("\n");
   //! Programmer must input the letter associated with their Uno device
-  fillStableBytes('A');
+  fillStableBytes('A');  //Not really a fan of having to hardcode the letter.  Fine for now, but this is something I'd like to change.
   printStableBytes();
 }
 

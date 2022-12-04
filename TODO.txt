@@ -8,3 +8,21 @@ To this end, we need to do a few things:
 3. Merge/Create new files and then test.
 	-> I think we can make flags stored in EEPROM to show whether the PUF has already been generated.
 	-> At least for testing purposes, that can reduce wear on EEPROM and simplify the control flow of the programs.
+
+12/4:
+Idea I just had.  We can have only 1 program by checking EEPROM[0] (nodeID).  
+So if EEPROM[0] is D, then we know that should be the sender and the other three can be receivers.
+
+Ideally, it shouldn't matter who is the receiver and who is the sender, but we'll deal with that
+issue another time.
+
+Key takeaways from analysis (1):
+-Proto_Sender and Proto_Receiver overlap a ton.
+-PUF_Reader and Bloom_Filter are both pretty small.
+My plan:
+We start by combining Sender and Receiver into one file 
+(maybe that's a bad idea, could cause file to be too big - we'll see)
+
+After that, we can fold PUF_Reader into Bloom_filter...actually, maybe we do that first.
+What we need to make sure we do is only keep the necessary data/vars from PUF_Reader/Bloom_Filter
+before moving into reader/sender functionality.
