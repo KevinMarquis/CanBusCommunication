@@ -23,6 +23,6 @@ My plan:
 We start by combining Sender and Receiver into one file 
 (maybe that's a bad idea, could cause file to be too big - we'll see)
 
-After that, we can fold PUF_Reader into Bloom_filter...actually, maybe we do that first.
+After that, we can fold PUF_Reader into Bloom_filter...actually, maybe we do that first. -> Done, need to test and also add functionality to free up memory.
 What we need to make sure we do is only keep the necessary data/vars from PUF_Reader/Bloom_Filter
 before moving into reader/sender functionality.
