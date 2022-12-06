@@ -327,6 +327,6 @@ void setup() {
         Bloomsetup();
     }
 
-    Serial.println("BF_PUF Complete");
+    Serial.println("BF_PUF Setup Complete");
 
 }
