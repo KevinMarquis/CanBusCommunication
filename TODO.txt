@@ -5,6 +5,7 @@ To this end, we need to do a few things:
 2. Examine memory usage.  We don't necessarily need all the data to be stored in memory for each func.
 -> i.e.: we may be able to remove BF from memory once nodes are authenticated.
 	-> I'll belay this for now.  We may want to keep it in the event that a node is hotswapped.
+-	-> table this for now.
 3. Merge/Create new files and then test.
 	-> I think we can make flags stored in EEPROM to show whether the PUF has already been generated.
 	-> At least for testing purposes, that can reduce wear on EEPROM and simplify the control flow of the programs.
@@ -28,4 +29,9 @@ What we need to make sure we do is only keep the necessary data/vars from PUF_Re
 before moving into reader/sender functionality.
 
 Should receivers hold all the keys?
+-> idea was that keys would be distributed in some way so that if you did want to communicate with a node, thered be a process
+to retrieve the key that would be distributed across all the nodes.  
+-> Say we could split the keys across all the nodes - each node takes a portion of each key.
+-> leaks some info - secret sharing.  
+
 Compare response arrays
