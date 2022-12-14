@@ -40,3 +40,6 @@ Compare response arrays
 Priority for now:
 -> Combine the duplicate functions
 -> Combine the BF_PUF file and Proto_SenderReceiver files.
+
+I think I am going to push the combination of BF_PUF and Proto_SenderReceiver for now.  I'd like to 
+clean up the SenderReceiver code more before i combine it with something.

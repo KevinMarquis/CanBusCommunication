@@ -1,3 +1,4 @@
+//region Header Files
 #include <aes.h>
 #include <aes128_dec.h>
 #include <aes128_enc.h>
@@ -31,32 +32,9 @@
 #include <mcp_can_dfs.h>
 #include <EEPROM.h>
 
-/* NODE WIRING:
- *  To connect a node to an MCP2515, use this tutorial
- *  https://www.electronicshub.org/arduino-mcp2515-can-bus-tutorial/
- *  When connecting 2 MCP2515, use either the J2 or J3 pins.
- *  To connect 4 MCP2515:
- *    Suppose MCP2515 A, B, C, and D.
- *    Connect A to B and C to D using the HIGH and LOW pins on J2.
- *    Connect A to D and B to C using the HIGH and LOW pins on J3.
- *    (Forms a circle with the wires)
-*/
+//endregion
 
-//DIFFIE-HELLMAN |--------------------------------------------------------------------------------------------------------------
-/* Diffie-Hellman Method: https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
-Suppose nodes "Alice" & "Bob", and suppose Eavesdropper "Eve"
-Alice & Bob want to communicate without Eve being able to impersonate one of them.
-So they need to make a shared symmetric key across a public channel (the CAN bus), without Eve figuring out what the key is.
-
-For this example, consider the receiver "Bob".
-1.) Alice & Bob have secret colors (Private keys)
-2.) Alice & Bob agree on a common paint (receiver & generator)
-3.) Respectively, Alice & Bob mix the common paint w/ their secret colors.
-4.) Bob receives a mixture from Alice.
-5.) Bob shares his mixture w/ Alice publicly.
-6.) Bob mixes Alice's mixture w/ his own secret color.
-7.) Bob now has the common secret mixture (shared symmetric key).
-*/
+//region Constants
 //CONSTANTS |-----------------------------------------------------------------------------------------------------------------------------
 // Message & Key Sizes
 #define MSG_SIZE     4
@@ -105,8 +83,9 @@ int loopCount = 9999;
 int startTime;
 int stopTime;
 
+//endregion
 
-
+//region Variable Definitions
 MCP_CAN CAN(SPI_CS_PIN);
 //TODO: Address the Diffie_Key situation.  We want to combine the programs, so decide whether receivers should hold only own key or all.
 uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simpler for now.
@@ -114,44 +93,54 @@ uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simp
 uint8_t DIFFIE_KEY[NUM_NODES][KEY_SIZE];
 uint8_t msgCounter[NUM_NODES];
 uint8_t responderID;
+//endregion
 
+//region Function Definitions
 ///FUNCTIONS |-----------------------------------------------------------------------------------------------------------------------------
-// KEY GENERATION
+//region KEY GENERATION
 uint8_t keyGen(int i);                            // Generates 1 byte, "a", of the 16-byte key.
 uint8_t mulMod(uint8_t a, uint8_t b, uint8_t m);  // (a*b) mod m
 uint8_t powMod(uint8_t b, uint8_t e, uint8_t m);  // (b^e) mod m
+//endregion
 
-// Bloom Filter Functions
+//region Bloom Filter Functions
 bool isValid(uint8_t* puf);
 void getIndexes(uint16_t* indexes, uint8_t* puf);
+//endregion
 
-// COMMUNICATION FUNCTIONS
-//void sendMsg(uint8_t* msg);  Don't need this old definition anymore.
+//region COMMUNICATION FUNCTIONS
+
+//region Primary Communication Functions
+void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID);  //TODO: We have two function definitions for sendMsg.  We can combine them into one, and then just have preset parameters for if its a receiving node.
+void receiveMsg(uint8_t* msg, uint8_t msgLength);  // Use one function definition (the two receive functions were the same)
 void printMsg(uint8_t* msg);
+//endregion
 
 uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
 uint8_t response[MSG_SIZE];      //One quarter of a message sent  //TODO: Compare with sender's response array
 uint8_t privateKey[KEY_SIZE];
 
-//! Sender Comms functions
-void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID);  //TODO: We have two function definitions for sendMsg.  We can combine them into one, and then just have preset parameters for if its a receiving node.
-void receiveMsg(uint8_t* msg, uint8_t msgLength);  // Use one function definition (the two receive functions were the same)
-
-/// SENDER-SPECIFIC FUNCTIONS
+//region SENDER-SPECIFIC FUNCTIONS
 void recordMsg(uint8_t* msg);
 void printKeys();
 uint8_t findNode(const uint8_t msgID);
 void verifyThisNode();
+//endregion
 
+//endregion
 
 bool isFishy();
-
+//region Message Storage Arrays
 /// Message Storage Arrays
 uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
 uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
 uint8_t response[CAN_MAX];     // Needs to be bigger  //TODO: Compare with receiver's response array.
+//endregion
+
+//endregion
 
 /// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// region Setup
 void setup() {
     Serial.begin(115200);
     pinMode(LED,OUTPUT);
@@ -191,7 +180,7 @@ void setup() {
     Serial.println("Sender/Receiver Setup Complete");
 
 }
-
+// region Specific SetupFunctions
 void Sender_setup() {
     for (int i = 0; i < NUM_NODES; i++) {
         msgCounter[i] = 0;
@@ -235,6 +224,7 @@ void Sender_setup() {
     sendMsg(msgSent, MSG_SIZE, thisID);
 
 }
+
 void Receiver_setup() {
   Serial.println("Starting Receiver Mode...");
 
@@ -265,58 +255,10 @@ void Receiver_setup() {
 
   Serial.println("END SETUP.  ENTER LOOP\n");
 }
+// endregion
+// endregion
 
-void Sender_setup() {
-
-    Serial.println("PRINTING OUT BLOOM FILTER (TROUBLESHOOT CHECK):\n");
-    for (int i = 0; i < 128; i++) {
-        Serial.print(EEPROM[i + 16]);
-    }
-
-
-    for (int i = 0; i < NUM_NODES; i++) {
-        msgCounter[i] = 0;
-    }
-
-    //Alice removes her ID from the set of receiverIDs
-    for (int i = 0; i < NUM_NODES+1; i++) {
-        if (nodeID[i] == thisID) {
-            for (int x = i; x < NUM_NODES; x++) {
-                nodeID[x] = nodeID[x+1];
-            }
-        }
-    }
-
-    // Alice generates her private key
-    for (int i = 0; i < KEY_SIZE; i++) {
-        privateKey[i] = keyGen(i);
-    }
-
-    response[0] = 's';
-
-
-    Serial.println();
-    Serial.println("WAITING FOR RECEIVERS...");
-    // Wait until every receiving node is ready
-    for (int i = 0; i < NUM_NODES; i++) {
-        //Serial.print("Number of Nodes: ");
-        //Serial.println(NUM_NODES);
-        //Serial.print("Current iterator value: ");
-        //Serial.println(i);
-        while (response[0] != 'Y') {
-            receiveMsg(response, 1);
-        }
-        response[0] = 's';
-        Serial.print("Node #");
-        Serial.print(i+1);
-        Serial.println(" is Ready!");
-
-    }
-    msgSent[0] = 'G';
-    sendMsg(msgSent, MSG_SIZE, thisID);
-
-}
-
+// region Switch Loop
 //NOTE: The Different tests do not currently function perfectly when executed sequentially, due to desync issues.  However, each test is individually valid.  Functions will still work when executed sequentially.
 int state = -1;  // Define starting state.  For starters, it will be a state that does not exist, but, will be set a starting state depending on whether the node is a sender or receiver.
 void loop() {
@@ -331,6 +273,7 @@ void loop() {
       //States 100-200 are for testing purposes
       //States 900-999 are for error handling/exceptions
       case 0:
+          //region Case 0: Resynchronization (R)
           Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
           Serial.println();
           Serial.println("Awaiting Resync Request from Sender...");
@@ -354,11 +297,14 @@ void loop() {
           }
 
           Serial.println("Ready to Go!");
+          //endregion
+
           state = 1;
           break;
 
       case 1:
           //// RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
+          //region Case 1: Receive Message (R)
           Serial.println("Entering state 1");
           // Check Message and decrypt using private key
           // RECEIVES MESSAGE |---------------------------------------------------------------------------------------------------------------------
@@ -373,11 +319,15 @@ void loop() {
               }
           }
           Serial.println("Moving to state 2");
+          //endregion
+
           state = 2;  //Change to response state
           break;
 
       case 2:
           //// RESPONDS |-----------------------------------------------------------------------------------------------------------------------------
+
+          //region Respond To Message (R)
           Serial.println("Entering state 2");
           // Respond to sender
           srand(EEPROM[0]); //generate random delay times for responses
@@ -390,6 +340,7 @@ void loop() {
               //Bob sends the response
               sendMsg(response, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
           }
+          //endregion
 
           //Switch to state 101 is for testing purposes
           state = 101;
@@ -398,32 +349,42 @@ void loop() {
       case 101:
           //// PRINT OUT |----------------------------------------------------------------------------------------------------------------------------
           //Print out the Key
+          // region Case 101: Print Out Keys (R)
           Serial.print("SHARED KEY:");
           for (int c = 0; c < KEY_SIZE; c++) {
               Serial.print(" ");
               Serial.print(DIFFIE_KEY[c]);
           }
+          //endregion
+
           state = 102;
           break;
 
       case 102: //TODO create a bloom filter check function
+          //region Case 102: Bloom Filter Test 1 (R)
           //Bloom Filter testing
           //We should be able to fold this receiveBloom function into the normal receive function.  For now, it will be left separate.
           Serial.println("First Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
           delay(1000); //Wait for 1 second - let the sender get ahead.
+          //endregion
+
           state = 103;
           break;
 
       case 103:
+          //region Case 103: Bloom Filter Test 2 (R)
           Serial.println("Second Test: ");
           receiveMsg_BLOOM(msgReceived, MSG_SIZE);
           delay(1000); //Wait for 1 second - let the sender get ahead.
+          //endregion
+
           state = 0;
           break;
 
 
       case 104:
+          //region Case 104: Hashing Test (R)
           Serial.println("\n\n---------- | HASHING |----------\n");
           //int i = 0;  //Define iterator for hashing tests
           while(true) {
@@ -484,10 +445,13 @@ void loop() {
               loopCount--;
               //i++;
           }
+          //endregion
+
           state = 0;
           break;
 
       case 50:
+          //region Case 50: Resynchronization (S)
           Serial.println("\n\n---------- | RESYNCHRONIZATION |----------\n");
           //Receivers always finish their work before the sender.  So, sender will send a resync request to receivers when he is ready.
           response[0] = 'Y';
@@ -515,11 +479,13 @@ void loop() {
           }
           msgSent[0] = 'G';
           sendMsg(msgSent, MSG_SIZE, thisID);
+          //endregion
 
           state = 51;
           break;
 
       case 51:
+          //region Case 51: Send Message (S)
           //// SEND MESSAGE |-------------------------------------------------------------------------------------------------------------------------
           //Send message to all receiver nodes ("Bobs")
           Serial.println("Entering case 1");
@@ -534,10 +500,13 @@ void loop() {
               delay(200);
               sendMsg(msgSent, MSG_SIZE, thisID);
           }
+          //endregion
+
           state = 52;  //Switch to response state in preparation for a reply from each receiver
           break;
 
       case 52:
+          //region Case 52: Receive Message (R)
           //// RECEIVES RESPONSE |--------------------------------------------------------------------------------------------------------------------
           //Receive a message from all receiver nodes ("Bobs")
           Serial.println("Entering case 2");
@@ -556,6 +525,8 @@ void loop() {
 
               recordMsg(response);
           }
+          //endregion
+
           state = 151;
           break;
 
@@ -566,26 +537,32 @@ void loop() {
           break;
 
       case 152:
+          //region Bloom Filter Test 1 (S)
           //Bloom Filter testing (to be folded into main sender testing)
           sendMsg(msgSent, MSG_SIZE, 'X');
           Serial.println("First Check sent.");
           verifyThisNode();
           Serial.println("Verification complete.  Proceeding to second test.");
+          //endregion
+
           state = 153;
           break;
 
       case 153:
+          //region Bloom Filter Test 2 (S)
           Serial.println("Second test.");
           //sendMsg(msgSent, MSG_SIZE, nodeID[0]);
           sendMsg(msgSent, MSG_SIZE, thisID);
           Serial.println("Second Check sent.");
           verifyThisNode();
           Serial.println("Second test complete.");
+          //endregion
 
           state = 50;
           break;
 
       case 154:
+          //region Hashing Test (S)
           //Hashing tests
           Serial.println();
           Serial.println();
@@ -612,6 +589,8 @@ void loop() {
               }
               //i++;
           }
+          //endregion
+
           state = 50;
           break;
 
@@ -623,7 +602,9 @@ void loop() {
 
 
 }
+// endregion
 
+// region Key Generation Functions
 //KEY GENERATION FUNCTIONS |--------------------------------------------------------------------------------------------------------------
 // Generates 1 byte, "a" of this node's 16-byte private key
 // Returns a random value from 1 to the selected prime number
@@ -689,9 +670,9 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
   // Now, r = (b^e) mod m, if no overflow occurred.
   return result;
 }
+// endregion
 
-
-
+// region Bloom Filter Functions
 // Bloom Filter Functions |---------------------------------------------------------------------------------------------------------------
 bool isValid(uint8_t* puf) {
   Serial.println("Starting isValid:\n\n\n");
@@ -785,7 +766,9 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
     }
   }
 }
+//endregion
 
+//region Primary Communication Functions
 // COMMUNICATION FUNCTIONS |------------------------------------------------------------------------------------------------------
 //----------------------SENDER/RECEIVER COMMS FUNCTIONS----------------------------
 void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID) {  //This function combines the sender and receiver variants.
@@ -818,7 +801,9 @@ void receiveMsg(uint8_t* msg, uint8_t msgLength) {  //The two receive msg functi
     }
 
 }
+// endregion
 
+//region Bloom Filter Check Functions
 //----OTHER COMMS Functions-------------
 //This is an experimental function, to test the bloom filter.
 void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
@@ -882,9 +867,8 @@ void printMsg(uint8_t* msg) {
   Serial.println("\n");
 }
 
-
-// SENDER MESSAGE COMMUNICATION FUNCTIONS |------------------------------------------------------------------------------------------------------
 void verifyThisNode() {
+    // From Sender
     Serial.println("Starting Node Verification...");
     uint8_t message;
     for (int i = 0; i < NUM_NODES; i++) {
@@ -900,7 +884,9 @@ void verifyThisNode() {
         sendMsg(&thisPuf[8], 8, thisID);
     }
 }
+//endregion
 
+//region Sender Message Communication Functions
 void printMsg(uint8_t* msg) {
     Serial.print("Message Sent By: 0x");
     Serial.println(responderID);
@@ -927,7 +913,9 @@ void recordMsg(uint8_t* msg) {
     //Increment the corresponding responder's counter.
     msgCounter[numID] += MSG_SIZE;
 }
+//endregion
 
+//region Receiver Message Communication Functions
 //Print keys in order
 void printKeys() {
     Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
@@ -955,7 +943,7 @@ uint8_t findNode(const uint8_t msgID) {
     Serial.print("ERROR IN FINDNODE");
     return 2000;
 }
-
 //If a sender's ID doesn't match any known ID's, alert the node.
+//endregion
 
 
