@@ -42,4 +42,8 @@ Priority for now:
 -> Combine the BF_PUF file and Proto_SenderReceiver files.
 
 I think I am going to push the combination of BF_PUF and Proto_SenderReceiver for now.  I'd like to 
-clean up the SenderReceiver code more before i combine it with something.
+clean up the SenderReceiver code more before i combine it with something....As of 12/14, Done.
+
+12/14
+Proto_SenderReceiver should be good now.  Want to run the functions and test it out before I fold it and BF_PUF together.
+The one thing that may need to be changed is the response array.  Sender has a bigger one.  I think we can just use sender's array, but I will test this.  For now, I will use the sender's array.

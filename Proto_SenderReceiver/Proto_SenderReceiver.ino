@@ -117,7 +117,7 @@ void printMsg(uint8_t* msg);
 //endregion
 
 uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
-uint8_t response[MSG_SIZE];      //One quarter of a message sent  //TODO: Compare with sender's response array
+//uint8_t response[MSG_SIZE];      //One quarter of a message sent  COMMENTING OUT SMALLER ARRAY FOR NOW.//TODO: Compare with sender's response array
 uint8_t privateKey[KEY_SIZE];
 
 //region SENDER-SPECIFIC FUNCTIONS
@@ -158,12 +158,12 @@ void setup() {
     if ((thisID == 0xBE) or (thisID == 0xFE) or (thisID == 0xBF)){  // If we are running on nodes A, B, or C
         is_Receiver = true;
         is_Sender = false;
-        state = 1;  //TODO: Verify that we are starting in the correct state
+        state = 1;
     }
     else if (thiID == 0xE7){  // If we are running on node D
         is_Receiver = false;
         is_Sender = true;
-        state = 51; //TODO: Verify that we are starting in the correct state
+        state = 51;
     }
 
     printf("Receiver?: %s\n", is_Receiver ? "true" : "false");  // Check and make sure this actually works.
@@ -228,19 +228,13 @@ void Sender_setup() {
 void Receiver_setup() {
   Serial.println("Starting Receiver Mode...");
 
-  // Delay until data can be read.
-  while (CAN_OK != CAN.begin(CAN_500KBPS)) {             // init can bus : baudrate = 500k
-    Serial.println("CAN BUS Shield init fail");
-    Serial.println("Init CAN BUS Shield again");
-    delay(100);
-  }
-
   Serial.println("\n\nStarting Private Key Generation...");
   // Bob generates his private key
   for (int i = 0; i < KEY_SIZE; i++) {
     privateKey[i] = keyGen(i); //privateKey = 0 -> keyGen(i) = 0
     DIFFIE_KEY[i] = 0;
   }
+
   response[0] = 'Y';
   Serial.println("Sending OK to receive");
   // Declare that this node is ready to receive messages
@@ -856,15 +850,6 @@ bool isFishy() {
   }
     Serial.println("isFishy determined FALSE");
     return false;
-}
-
-void printMsg(uint8_t* msg) {
-  Serial.print("Alice's Message:");
-  for (int a = 0; a < MSG_SIZE; a++) {
-    Serial.print(" ");
-    Serial.print(msg[a]);
-  }
-  Serial.println("\n");
 }
 
 void verifyThisNode() {
