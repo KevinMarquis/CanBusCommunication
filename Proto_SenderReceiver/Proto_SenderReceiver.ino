@@ -126,8 +126,7 @@ bool isValid(uint8_t* puf);
 void getIndexes(uint16_t* indexes, uint8_t* puf);
 
 // COMMUNICATION FUNCTIONS
-void sendMsg(uint8_t* msg);
-void receiveMsg(uint8_t* msg, uint8_t msgLength);
+//void sendMsg(uint8_t* msg);  Don't need this old definition anymore.
 void printMsg(uint8_t* msg);
 
 uint8_t msgReceived[MSG_SIZE];    //The 1st 4 members are what's needed
@@ -136,7 +135,7 @@ uint8_t privateKey[KEY_SIZE];
 
 //! Sender Comms functions
 void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID);  //TODO: We have two function definitions for sendMsg.  We can combine them into one, and then just have preset parameters for if its a receiving node.
-void receiveMsg(uint8_t* msg, uint8_t msgLength);
+void receiveMsg(uint8_t* msg, uint8_t msgLength);  // Use one function definition (the two receive functions were the same)
 
 /// SENDER-SPECIFIC FUNCTIONS
 void recordMsg(uint8_t* msg);
@@ -185,7 +184,7 @@ void setup() {
         Receiver_setup();
     }
 
-    if (is_Sender){
+    else if (is_Sender){
         Sender_setup();
     }
 
@@ -255,7 +254,7 @@ void Receiver_setup() {
   response[0] = 'Y';
   Serial.println("Sending OK to receive");
   // Declare that this node is ready to receive messages
-  sendMsg(response);
+  sendMsg(response, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
   Serial.println("OK Sent!");
   while (msgReceived[0] != 'G') {
     receiveMsg(msgReceived, 1);
@@ -347,7 +346,8 @@ void loop() {
           response[0] = 'Y';
           Serial.println("Sending OK to receive");
           // Declare that this node is ready to receive messages
-          sendMsg(response);
+          sendMsg(response, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
+
           Serial.println("OK Sent!");
           while (msgReceived[0] != 'G') {
               receiveMsg(msgReceived, 1);
@@ -388,7 +388,7 @@ void loop() {
               }
 
               //Bob sends the response
-              sendMsg(response);
+              sendMsg(response, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
           }
 
           //Switch to state 101 is for testing purposes
@@ -691,6 +691,7 @@ uint8_t powMod(uint8_t b, uint8_t e, uint8_t m) {
 }
 
 
+
 // Bloom Filter Functions |---------------------------------------------------------------------------------------------------------------
 bool isValid(uint8_t* puf) {
   Serial.println("Starting isValid:\n\n\n");
@@ -698,7 +699,7 @@ bool isValid(uint8_t* puf) {
   uint16_t index[7];
 
   //logic to find the indexes from the associated PUF, given a nodeID.
-  //TODO: for now, we can leave it like this.  In the future, I would like to have the message send the PUF, which we will check directly wit getIndexes instead of these if statements
+  //TODO: for now, we can leave it like this.  In the future, I would like to have the message send the PUF, which we will check directly with getIndexes instead of these if statements
   if (puf == nodeID[0]){
       getIndexes(index, sramPUF[0]);
   }
@@ -714,11 +715,6 @@ bool isValid(uint8_t* puf) {
   else{
       return false;
   }
-
-  //TODO: Clean up some of the debug code here, switch cases. Ensure it still works.
-  //getIndexes(index, sramPUF[3]);  This particular line shows that isValid can work
-
-  //getIndexes(index, puf);
 
   Serial.println("\nSRAM PUF hashed.");
 
@@ -791,24 +787,39 @@ void getIndexes(uint16_t* indexes, uint8_t* puf) {
 }
 
 // COMMUNICATION FUNCTIONS |------------------------------------------------------------------------------------------------------
-void sendMsg(uint8_t* msg) {
-  delay(10 * (rand() % 500 + 1)); //Delay for 0.1 to 5 seconds
-  CAN.sendMsgBuf(thisID, 0, MSG_SIZE, msg);
+//----------------------SENDER/RECEIVER COMMS FUNCTIONS----------------------------
+void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID) {  //This function combines the sender and receiver variants.
+    //S
+    Serial.print("RECEIVER ID: ");
+    Serial.println(receiverID);
+
+    if (is_Receiver){  //Enclosing this delay in an if statement because this is how the codebase had it set up.  We may just always include a random delay.
+        delay(10 * (rand() % 500 + 1)); //Delay for 0.1 to 5 seconds
+    }
+
+    CAN.sendMsgBuf(receiverID, 0, msgLength, msg);
+    //The sender function has more functionality than the receiver function.  We can fit adjust the receiver calls to sendMsg to fit the additional options
+
+    if (is_Sender){
+        delay(200);
+    }
 }
 
 uint8_t temp[CAN_MAX];
-void receiveMsg(uint8_t* msg, uint8_t msgLength) {
-  while(CAN_MSGAVAIL != CAN.checkReceive());
+void receiveMsg(uint8_t* msg, uint8_t msgLength) {  //The two receive msg functions are identical.
+    while(CAN_MSGAVAIL != CAN.checkReceive());
 
-  byte len = MSG_SIZE;
-  CAN.readMsgBuf(&len, temp);
-  senderID = CAN.getCanId();
+    byte len = MSG_SIZE;
+    CAN.readMsgBuf(&len, temp);
+    responderID = CAN.getCanId();
 
-  for (int i = 0; i < msgLength; i++) {
-    msg[i] = temp[i];
-  }
+    for (int i = 0; i < msgLength; i++) {
+        msg[i] = temp[i];
+    }
+
 }
 
+//----OTHER COMMS Functions-------------
 //This is an experimental function, to test the bloom filter.
 void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
   while(CAN_MSGAVAIL != CAN.checkReceive());
@@ -822,32 +833,19 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
 
   if (isFishy()) {
     uint8_t yes[4] = {'Y', 'Y', 'Y', 'Y'};
-    sendMsg(yes);
+    sendMsg(yes, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
 
-    uint8_t fishyPuf[16];
+
+      uint8_t fishyPuf[16];
 
     //senderID = 'X';
     TestSenderID = 'X';
-
-      //Serial.print("Sender ID: ");
-    //Serial.println(senderID);
-    //Serial.print("True Sender ID: ");
-    //Serial.println(trueSenderID);
-
-    //while (TestSenderID != trueSenderID) {
-    //while (senderID != trueSenderID) {
-    //  receiveMsg(fishyPuf, 8);
-    //}
-    //receiveMsg(&fishyPuf[8], 8);
-    //senderIsValid = isValid(fishyPuf);
-    //senderIsValid = isValid(TestSenderID);
-
     senderIsValid = isValid(senderID);
 
   }
   else {
     uint8_t no[4] = {'N', 'N', 'N', 'N'};
-    sendMsg(no);
+    sendMsg(no, MSG_SIZE, thisID);  //Changed here to fit the new SendMSG Function
   }
 
   if (senderIsValid) {
@@ -865,17 +863,7 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
 bool isFishy() {
     Serial.println("Running isFishy()...");
   for (int i = 0; i < 4; i++) {
-      //DEBUG CODE:
 
-//      if (i==0){
-//          Serial.println("Checking against Node A");      }
-//      else if (i==1){
-//          Serial.println("Checking against Node B");      }
-//      else if (i==2){
-//          Serial.println("Checking against Node C");      }
-//      else if (i==3){
-//          Serial.println("Checking against Node D");
-//      }
     if (senderID != nodeID[i] && senderID != 0) { //ALL_RECEIVE = 0 in sender program
         Serial.println("isFishy determined TRUE");
         return true;
@@ -896,27 +884,6 @@ void printMsg(uint8_t* msg) {
 
 
 // SENDER MESSAGE COMMUNICATION FUNCTIONS |------------------------------------------------------------------------------------------------------
-void sendMsg(uint8_t* msg, int msgLength, uint8_t receiverID) {  //TODO: We should be able to combine this with the other sendMSG
-    Serial.print("RECEIVER ID: ");
-    Serial.println(receiverID);
-    CAN.sendMsgBuf(receiverID, 0, msgLength, msg);
-    delay(200);
-}
-
-uint8_t temp[CAN_MAX];
-void receiveMsg(uint8_t* msg, uint8_t msgLength) {  //TODO: We should be able to combine this with the other receiveMSG
-    while(CAN_MSGAVAIL != CAN.checkReceive());
-
-    byte len = MSG_SIZE;
-    CAN.readMsgBuf(&len, temp);
-    responderID = CAN.getCanId();
-
-    for (int i = 0; i < msgLength; i++) {
-        msg[i] = temp[i];
-    }
-
-}
-
 void verifyThisNode() {
     Serial.println("Starting Node Verification...");
     uint8_t message;
@@ -990,3 +957,5 @@ uint8_t findNode(const uint8_t msgID) {
 }
 
 //If a sender's ID doesn't match any known ID's, alert the node.
+
+

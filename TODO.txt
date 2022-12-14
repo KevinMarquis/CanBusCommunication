@@ -33,5 +33,10 @@ Should receivers hold all the keys?
 to retrieve the key that would be distributed across all the nodes.  
 -> Say we could split the keys across all the nodes - each node takes a portion of each key.
 -> leaks some info - secret sharing.  
+-> Tabled for now.
 
 Compare response arrays
+
+Priority for now:
+-> Combine the duplicate functions
+-> Combine the BF_PUF file and Proto_SenderReceiver files.
