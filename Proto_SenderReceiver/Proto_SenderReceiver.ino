@@ -57,7 +57,6 @@ uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
 uint8_t thisID = EEPROM[0];
 uint8_t trueSenderID;
 uint8_t senderID = 'X';
-uint8_t TestSenderID = 'X';  //This is a testing variable.  We can remove it later.
 
 const uint8_t sramPUF[4][16] = {
         { 0xBE, 0x59, 0x37, 0xF8, 0xC6, 0x3E, 0xA7, 0xAA, 0xED, 0xB9, 0x9F, 0xBA, 0xBB, 0xEB, 0xB5, 0x35 }, //A
@@ -90,7 +89,7 @@ MCP_CAN CAN(SPI_CS_PIN);
 //TODO: Address the Diffie_Key situation.  We want to combine the programs, so decide whether receivers should hold only own key or all.
 uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simpler for now.
 
-uint8_t DIFFIE_KEY[NUM_NODES][KEY_SIZE];
+uint8_t DIFFIE_KEY_SENDER[NUM_NODES][KEY_SIZE];
 uint8_t msgCounter[NUM_NODES];
 uint8_t responderID;
 //endregion
@@ -132,7 +131,6 @@ void verifyThisNode();
 bool isFishy();
 //region Message Storage Arrays
 /// Message Storage Arrays
-uint8_t privateKey[KEY_SIZE];   //One quarter of the private key
 uint8_t msgSent[MSG_SIZE];      //One quarter of a message sent
 uint8_t response[CAN_MAX];     // Needs to be bigger  //TODO: Compare with receiver's response array.
 //endregion
@@ -141,11 +139,13 @@ uint8_t response[CAN_MAX];     // Needs to be bigger  //TODO: Compare with recei
 
 /// SETUP & LOOP |+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // region Setup
+int state = -1;  // Define starting state.  For starters, it will be a state that does not exist, but, will be set a starting state depending on whether the node is a sender or receiver.
+
 void setup() {
     Serial.begin(115200);
     pinMode(LED,OUTPUT);
 
-    Serial.println("Starting Sender/Receiver...")
+    Serial.println("Starting Sender/Receiver...");
 
     // Delay until data can be read.
     while (CAN_OK != CAN.begin(CAN_500KBPS)) {             // init can bus : baudrate = 500k
@@ -160,7 +160,7 @@ void setup() {
         is_Sender = false;
         state = 1;
     }
-    else if (thiID == 0xE7){  // If we are running on node D
+    else if (thisID == 0xE7){  // If we are running on node D
         is_Receiver = false;
         is_Sender = true;
         state = 51;
@@ -169,10 +169,9 @@ void setup() {
     printf("Receiver?: %s\n", is_Receiver ? "true" : "false");  // Check and make sure this actually works.
     printf("Sender?: %s\n", is_Sender ? "true" : "false");  // Check and make sure this actually works.
 
-    if (is_Receiver);{
+    if (is_Receiver) {
         Receiver_setup();
     }
-
     else if (is_Sender){
         Sender_setup();
     }
@@ -254,7 +253,6 @@ void Receiver_setup() {
 
 // region Switch Loop
 //NOTE: The Different tests do not currently function perfectly when executed sequentially, due to desync issues.  However, each test is individually valid.  Functions will still work when executed sequentially.
-int state = -1;  // Define starting state.  For starters, it will be a state that does not exist, but, will be set a starting state depending on whether the node is a sender or receiver.
 void loop() {
   Serial.println("Looping...");
   //CAN.readMsgBuf(&len,buf);
@@ -576,7 +574,7 @@ void loop() {
               for (int i = 0; i < NUM_NODES; i++) {
                   char stmp[16] = "1234567890123456";
                   spritz_mac(hash[i], HASH_SIZE, stmp, sizeof(stmp), DIFFIE_KEY[i], KEY_SIZE);
-                  aes128_enc_single(DIFFIE_KEY[i], stmp);
+                  aes128_enc_single(DIFFIE_KEY_SENDER[i], stmp);
                   sendMsg(stmp, 8, nodeID[i]);
                   sendMsg(&stmp[8], 8, nodeID[i]);
                   delay(200);
@@ -818,7 +816,6 @@ void receiveMsg_BLOOM(uint8_t* msg, uint8_t msgLength) {
       uint8_t fishyPuf[16];
 
     //senderID = 'X';
-    TestSenderID = 'X';
     senderIsValid = isValid(senderID);
 
   }
@@ -892,21 +889,19 @@ void recordMsg(uint8_t* msg) {
     unsigned int numID = findNode(responderID);
 
     for (int j = 0; j < MSG_SIZE; j++) {
-        DIFFIE_KEY[numID][j + msgCounter[numID]] = msg[j];
+        DIFFIE_KEY_SENDER[numID][j + msgCounter[numID]] = msg[j];
     }
 
     //Increment the corresponding responder's counter.
     msgCounter[numID] += MSG_SIZE;
 }
-//endregion
 
-//region Receiver Message Communication Functions
 //Print keys in order
 void printKeys() {
     Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     Serial.println("KEYS MADE:");
-    for (int i = 0; i < sizeof(DIFFIE_KEY); i++) { //4 Bytes per message
-        Serial.print((unsigned int) DIFFIE_KEY[i/KEY_SIZE][i%KEY_SIZE]);
+    for (int i = 0; i < sizeof(DIFFIE_KEY_SENDER); i++) { //4 Bytes per message
+        Serial.print((unsigned int) DIFFIE_KEY_SENDER[i/KEY_SIZE][i%KEY_SIZE]);
 
         if ((i+1)%KEY_SIZE == 0){
             Serial.println(" ");
@@ -917,7 +912,9 @@ void printKeys() {
         }
     }
 }
+//endregion
 
+//region Receiver Message Communication Functions
 uint8_t findNode(const uint8_t msgID) {
     for (int x = 0; x < NUM_NODES; x++) {
         if (msgID == nodeID[x]) {

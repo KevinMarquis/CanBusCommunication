@@ -47,3 +47,6 @@ clean up the SenderReceiver code more before i combine it with something....As o
 12/14
 Proto_SenderReceiver should be good now.  Want to run the functions and test it out before I fold it and BF_PUF together.
 The one thing that may need to be changed is the response array.  Sender has a bigger one.  I think we can just use sender's array, but I will test this.  For now, I will use the sender's array.
+
+1/5:
+I have successfully compiled Proto_SenderReceiver.  Need to move variables into functions to alleviate memory load.
