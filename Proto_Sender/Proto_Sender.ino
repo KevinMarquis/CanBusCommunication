@@ -62,10 +62,7 @@ const unsigned int generator = 16807;
 #define LED        8
 #define ledON      true
 
-// Node IDs. The first byte of each node's SRAM PUF reading
-//uint8_t nodeID[4] = {0xD3, 0xFA, 0xF3, 0x74};  <- This is old
-uint8_t nodeID[4] = {0xBE, 0xFE, 0xBF, 0xE7};
-uint8_t thisID = EEPROM[0];
+
 
 
 

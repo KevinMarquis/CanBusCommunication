@@ -50,3 +50,7 @@ The one thing that may need to be changed is the response array.  Sender has a b
 
 1/5:
 I have successfully compiled Proto_SenderReceiver.  Need to move variables into functions to alleviate memory load.
+
+1/6:
+Current plan is to move Sender vs receiver check to preprocessor time in order to minimize memory consumption.
+We can do the same thing when we fold BF_PUF in too.

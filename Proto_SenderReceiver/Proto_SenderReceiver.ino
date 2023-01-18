@@ -87,9 +87,16 @@ int stopTime;
 //region Variable Definitions
 MCP_CAN CAN(SPI_CS_PIN);
 //TODO: Address the Diffie_Key situation.  We want to combine the programs, so decide whether receivers should hold only own key or all.
+
+
 uint8_t DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simpler for now.
 
 uint8_t DIFFIE_KEY_SENDER[NUM_NODES][KEY_SIZE];
+
+
+int * TestVarTwo;
+
+
 uint8_t msgCounter[NUM_NODES];
 uint8_t responderID;
 //endregion
@@ -169,10 +176,15 @@ void setup() {
     printf("Receiver?: %s\n", is_Receiver ? "true" : "false");  // Check and make sure this actually works.
     printf("Sender?: %s\n", is_Sender ? "true" : "false");  // Check and make sure this actually works.
 
-    if (is_Receiver) {
+
+    if (is_Receiver){
+        //uint8_t* DIFFIE_KEY[KEY_SIZE]; //Receivers only hold their own key. Makes it simpler for now.
+        //uint8_t* DIFFIE_KEY = (uint8_t&)malloc(sizeof(uint8_t) * KEY_SIZE);
         Receiver_setup();
     }
+
     else if (is_Sender){
+        //uint8_t* DIFFIE_KEY_SENDER[NUM_NODES][KEY_SIZE];
         Sender_setup();
     }
 
